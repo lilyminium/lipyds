@@ -332,7 +332,7 @@ if __name__ == "__main__":
         # Optional include package data to ship with your package
         # Customize MANIFEST.in if the general case does not suit your needs
         # Comment out this line to prevent the files from being packaged with your software
-        include_package_data=True,
+        # include_package_data=True,
         ext_modules=exts,
 
         # Allows `setup.py test` to work correctly with pytest
