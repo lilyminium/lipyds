@@ -6,8 +6,15 @@ channels:
   - defaults
 dependencies:
     # Base depends
+  - cython
+  - nptyping
+  - numpy >=1.20.0
   - python
   - pip
+  - mdanalysis>=1.0.0
+  - mdanalysistests>=1.0.0
+  - scikit-learn>=0.21.0
+
 
     # Testing
   - pytest
