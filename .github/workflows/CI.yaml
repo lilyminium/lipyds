@@ -66,7 +66,7 @@ jobs:
       shell: bash -l {0}
 
       run: |
-        pytest -v --cov=mdkit_leaflets --cov-report=xml --color=yes mdkit_leaflets/tests/
+        pytest -v --cov=mdkit_leaflets --cov-report=xml --color=yes mdkleaflets/tests/
 
     - name: CodeCov
       uses: codecov/codecov-action@v1
