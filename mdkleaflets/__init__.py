@@ -4,7 +4,7 @@ A toolkit for leaflet-based membrane analysis
 """
 
 # Add imports here
-from .leaflets import *
+from .leafletfinder.leafletfinder import LeafletFinder
 
 # Handle versioneer
 from ._version import get_versions
