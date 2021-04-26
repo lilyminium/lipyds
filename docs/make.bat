@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
-set SPHINXPROJ=mdkit_leaflets
+set SPHINXPROJ=lipyds
 
 if "%1" == "" goto help
 
