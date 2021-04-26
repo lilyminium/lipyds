@@ -10,9 +10,3 @@ A toolkit for leaflet-based membrane analysis
 ### Copyright
 
 Copyright (c) 2021, Lily Wang
-
-
-#### Acknowledgements
- 
-Project based on the 
-[MDKit Python Cookiecutter](https://github.com/lilyminium/cookiecutter-cms) version 0.0.
