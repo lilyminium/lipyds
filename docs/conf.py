@@ -17,12 +17,12 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-import mdkit_leaflets
+import lipyds
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'mdkit_leaflets'
+project = 'lipyds'
 copyright = ("2021, Lily Wang. Project structure based on the "
              "MDAnalysis MDKit Python Cookiecutter version 0.0")
 author = 'Lily Wang'
@@ -141,7 +141,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'mdkit_leafletsdoc'
+htmlhelp_basename = 'lipydsdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -168,8 +168,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'mdkit_leaflets.tex', 'mdkit_leaflets Documentation',
-     'mdkit_leaflets', 'manual'),
+    (master_doc, 'lipyds.tex', 'lipyds Documentation',
+     'lipyds', 'manual'),
 ]
 
 
@@ -178,7 +178,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'mdkit_leaflets', 'mdkit_leaflets Documentation',
+    (master_doc, 'lipyds', 'lipyds Documentation',
      [author], 1)
 ]
 
@@ -189,8 +189,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'mdkit_leaflets', 'mdkit_leaflets Documentation',
-     author, 'mdkit_leaflets', 'A toolkit for leaflet-based membrane analysis',
+    (master_doc, 'lipyds', 'lipyds Documentation',
+     author, 'lipyds', 'A toolkit for leaflet-based membrane analysis',
      'Miscellaneous'),
 ]
 

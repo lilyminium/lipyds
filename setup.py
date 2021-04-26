@@ -1,5 +1,5 @@
 """
-mdkit_leaflets
+lipyds
 A toolkit for leaflet-based membrane analysis
 """
 import sys
@@ -47,8 +47,8 @@ def get_extensions():
     
     # EXTENSION LIST
     
-    cutils = Extension(name="mdkleaflets.lib.cutils", 
-                       sources=["mdkleaflets/lib/cutils.pyx"],
+    cutils = Extension(name="lipyds.lib.cutils", 
+                       sources=["lipyds/lib/cutils.pyx"],
                        include_dirs=[np.get_include()],
                        libraries=mathlib,
                        language="c++",
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     setup(
         # Self-descriptive entries which should always be present
-        name='mdkit_leaflets',
+        name='lipyds',
         author='Lily Wang',
         author_email='lily.wang@anu.edu.au',
         description=short_description[0],

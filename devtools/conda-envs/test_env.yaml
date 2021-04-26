@@ -10,9 +10,8 @@ dependencies:
   - nptyping
   - numpy >=1.20.0
   - python
-  - pip
-  - mdanalysis>=1.0.0
-  - mdanalysistests>=1.0.0
+  # - mdanalysis>=1.0.0
+  # - mdanalysistests>=1.0.0
   - scikit-learn>=0.21.0
 
 
@@ -20,6 +19,10 @@ dependencies:
   - pytest
   - pytest-cov
   - codecov
+
+  - pip:
+    - git+https://github.com/MDAnalysis/mdanalysis@develop#egg=mdanalysis&subdirectory=package
+    - git+https://github.com/MDAnalysis/mdanalysis@develop#egg=MDAnalysisTests&subdirectory=testsuite
 
     # Pip-only installs
   #- pip:

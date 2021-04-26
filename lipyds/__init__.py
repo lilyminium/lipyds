@@ -1,5 +1,5 @@
 """
-mdkit_leaflets
+lipyds
 A toolkit for leaflet-based membrane analysis
 """
 

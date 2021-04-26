@@ -1,5 +1,5 @@
 """
-Unit and regression test for the mdkit_leaflets package.
+Unit and regression test for the lipyds package.
 """
 
 import pytest
@@ -11,7 +11,7 @@ from MDAnalysisTests.datafiles import (Martini_membrane_gro,
                                        GRO_MEMPROT, XTC_MEMPROT)
 from .datafiles import (Martini_double_membrane, DPPC_vesicle_only)
 
-from mdkleaflets import LeafletFinder
+from lipyds import LeafletFinder
 
 class BaseTestLeafletFinder:
     select = "name PO4"
