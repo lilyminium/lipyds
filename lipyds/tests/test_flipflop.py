@@ -10,8 +10,8 @@ from lipyds import LeafletFinder, LipidFlipFlop
 
 @pytest.mark.parametrize("stop, translocations", [
     (1, 0),
-    (10, 127),
-    (50, 686),
+    (10, 132),
+    (50, 716),
 ])
 def test_flipflop(stop, translocations):
     u = mda.Universe(DDAT_POPC_TPR, DDAT_POPC_XTC)
