@@ -113,7 +113,7 @@ jobs:
         GH_REPOSITORY: "github.com/${{ github.repository }}.git"
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        cd docs/_build/html/
+        cd build/sphinx/html
 
         # set up git
         REV=$(git rev-parse --short HEAD)
