@@ -1,10 +1,30 @@
 name: docs
 channels:
+  - conda-forge
+  - defaults
 dependencies:
     # Base depends
   - python
   - pip
 
+  - cython
+  - matplotlib
+  - nptyping
+  - numpy >=1.20.0
+  - pandas
+  - python
+  - scikit-learn>=0.21.0
+  - scipy
+
+    # Testing
+  - pytest
+  - pytest-cov
+  - codecov
+
+  - pip:
+    - sphinx_rtd_theme
+    - git+https://github.com/MDAnalysis/mdanalysis@develop#egg=mdanalysis&subdirectory=package
+    - git+https://github.com/MDAnalysis/mdanalysis@develop#egg=MDAnalysisTests&subdirectory=testsuite
 
 
     # Pip-only installs
