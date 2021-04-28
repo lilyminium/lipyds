@@ -1,7 +1,3 @@
-"""
-Unit and regression test for the lipyds package.
-"""
-
 import pytest
 
 import numpy as np
@@ -9,7 +5,9 @@ from numpy.testing import assert_equal
 import MDAnalysis as mda
 from MDAnalysisTests.datafiles import (Martini_membrane_gro,
                                        GRO_MEMPROT, XTC_MEMPROT)
-from .datafiles import (Martini_double_membrane, DPPC_vesicle_only)
+from .datafiles import (Martini_double_membrane, DPPC_vesicle_only,
+                        NEURONAL_DDAT, NEURONAL_HDAT,
+                        NEURONAL_HSERT, NEURONAL_GLYT2)
 
 from lipyds import LeafletFinder
 
@@ -24,7 +22,7 @@ class BaseTestLeafletFinder:
         lf = LeafletFinder(universe, select=self.select, pbc=True,
                            method=method, **kwargs)
 
-        for found, given in zip(lf.leaflet_residues_by_z, self.leaflet_resix):
+        for found, given in zip(lf.leaflet_residues, self.leaflet_resix):
             assert_equal(found.resindices, given,
                          err_msg="Found wrong leaflet lipids")
 
@@ -114,7 +112,7 @@ class TestVesicleFull(BaseTestVesicle):
                            n_leaflets=self.n_leaflets, pbc=True,
                            method=method, **kwargs)
         
-        for found, given in zip(lf.leaflet_residues_by_z, self.full_20):
+        for found, given in zip(lf.leaflet_residues, self.full_20):
             assert_equal(found.residues.resindices[::20], given,
                          err_msg="Found wrong leaflet lipids")
 
@@ -129,7 +127,7 @@ class TestVesicleHalf(BaseTestVesicle):
                            n_leaflets=self.n_leaflets,
                            method=method, **kwargs)
         
-        for found, given in zip(lf.leaflet_residues_by_z, self.half_20):
+        for found, given in zip(lf.leaflet_residues, self.half_20):
             assert_equal(found.resindices[::20], given,
                          err_msg="Found wrong leaflet lipids")
 
@@ -144,6 +142,6 @@ class TestVesicleFifth(BaseTestVesicle):
                            n_leaflets=self.n_leaflets, pbc=True,
                            method=method, **kwargs)
         
-        for found, given in zip(lf.leaflet_residues_by_z, self.fifth_20):
+        for found, given in zip(lf.leaflet_residues, self.fifth_20):
             assert_equal(found.resindices[::20], given,
                          err_msg="Found wrong leaflet lipids")

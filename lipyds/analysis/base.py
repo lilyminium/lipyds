@@ -1,5 +1,5 @@
 
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Optional
 import logging
 
 import numpy as np
@@ -8,12 +8,73 @@ from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.analysis.base import AnalysisBase, ProgressBar
 from MDAnalysis.analysis.distances import capped_distance
 
-from .leafletfinder import LeafletFinder
+from ..leafletfinder import LeafletFinder
 
 logger = logging.getLogger(__name__)
 
 class LeafletAnalysisBase(AnalysisBase):
+    """
+    Base class for leaflet-based analysis.
 
+    Subclasses should overwrite ``_single_frame()``.
+
+    Parameters
+    ----------
+    universe: AtomGroup or Universe
+        :class:`~MDAnalysis.core.universe.Universe` or
+        :class:`~MDAnalysis.core.groups.AtomGroup` to operate on.
+    select: str (optional)
+        A :meth:`Universe.select_atoms` selection string
+        for atoms that define the lipid head groups, e.g.
+        "name PO4" or "name P*"
+    leafletfinder: LeafletFinder instance (optional)
+        A :class:`~lipyds.leafletfinder.leafletfinder.LeafletFinder`
+        instance. If this is not provided, a new LeafletFinder
+        instance will be created using ``leaflet_kwargs``.
+    leaflet_kwargs: dict (optional)
+        Arguments to use in creating a new LeafletFinder instance.
+        Ignored if an instance is already provided to ``leafletfinder``.
+        If ``select`` and ``pbc`` are not present in ``leaflet_kwargs``,
+        the values given to ``LeafletAnalysisBase`` are used.
+    group_by_attr: str (optional)
+        How to group the resulting analysis.
+    pbc: bool (optional)
+        Whether to use PBC
+    update_leaflet_step: int (optional)
+        How often to re-run the LeafletFinder. If 1, the LeafletFinder
+        is re-run for every frame of the analysis. This can be slow.
+        It is unnecessary if you do not have flip-flopping lipids such
+        as cholesterol, or you do not care where they are.
+    **kwargs:
+        Passed to :class:`~MDAnalysis.analysis.base.AnalysisBase`
+
+    
+    Attributes
+    ----------
+    selection: :class:`~MDAnalysis.core.groups.AtomGroup`
+        Selection for the analysis
+    sel_by_residue: list of :class:`~MDAnalysis.core.groups.AtomGroup`
+        AtomGroups in a list, split up by residue
+    residues: :class:`~MDAnalysis.core.groups.ResidueGroup`
+        Residues used in the analysis
+    n_residues: int
+        Number of residues
+    ids: numpy.ndarray
+        Labels used, obtained from ``group_by_attr``
+    leafletfinder: LeafletFinder
+    n_leaflets: int
+        Number of leaflets
+    residue_leaflets: numpy.ndarray of ints, (n_residues,)
+        The leaflet index of each residue. Leaflets are sorted by z-coordinate,
+        i.e. 0 is the leaflet that has the lowest z-coordinate.
+    leaflet_residues: dict of (int, list of ints)
+        Dictionary where the key is the leaflet index and the value is a list
+        of the residue index in the ``residues`` attribute. This is *not*
+        the canonical ``resindex`` attribute in MDAnalysis.
+    leaflet_atomgroups: dict of (int, AtomGroup)
+        Dictionary where the key is the leaflet index and the value is the
+        subset AtomGroup of ``selection`` that is in that leaflet.
+    """
     def __init__(self, universe: Union[AtomGroup, Universe],
                  select: Optional[str]="all",
                  leafletfinder: Optional[LeafletFinder]=None,
@@ -53,8 +114,9 @@ class LeafletAnalysisBase(AnalysisBase):
                 leaflet_kwargs["select"] = select
             if "pbc" not in leaflet_kwargs:
                 leaflet_kwargs["pbc"] = pbc
-            leafletfinder = LeafletFinder(**leaflet_kwargs)
+            leafletfinder = LeafletFinder(universe, **leaflet_kwargs)
         self.leafletfinder = leafletfinder
+        self.n_leaflets = self.leafletfinder.n_leaflets
 
         # some residues may be selected for analysis, that
         # are not in the leafletfinder.
@@ -71,7 +133,6 @@ class LeafletAnalysisBase(AnalysisBase):
                                           or self.selection[[]])
         self.residues_inside = self.sel_inside_leafletfinder.residues
         self.residues_outside = self.sel_outside_leafletfinder.residues
-        self._first_atoms_inside = sum(ag[0] for ag in sel_in_leafletfinder)
         self._first_atoms_outside = sum(ag[0] for ag in sel_out_leafletfinder)
         
         # placeholder leaflet values
@@ -81,6 +142,7 @@ class LeafletAnalysisBase(AnalysisBase):
     def _update_leaflets(self):
         """Update the ``residue_leaflets`` attribute for the current frame."""
         self.leafletfinder.run()
+        self.leaflet_atomgroups = {}
 
         # assign inner residues
         inside_rix = self.residues_inside.resindices
@@ -89,13 +151,13 @@ class LeafletAnalysisBase(AnalysisBase):
             lf = self.leafletfinder.resindex_to_leaflet[rix]
             self.residue_leaflets[i] = lf
 
-        if not len(self._first_atoms_outside):
+        if not self._first_atoms_outside:
             return
 
         # assign outside residues by neighbors
         box = self.get_box()
         pairs = capped_distance(self._first_atoms_outside.positions,
-                                self._first_atoms_inside.positions,
+                                self.leafletfinder._first_atoms.positions,
                                 max_cutoff=self.leafletfinder.cutoff,
                                 box=box, return_distances=False)
         splix = np.where(np.ediff1d(pairs[:, 0]))[0] + 1
@@ -103,13 +165,20 @@ class LeafletAnalysisBase(AnalysisBase):
         outside_rix = self.residues_outside.resindices
         for arr in plist:
             i = self._resindex_to_analysis_order[outside_rix[arr[0, 0]]]
-            neighbor_rix = inside_rix[arr[:, 1]]
-            neighbor_ix = np.array([self._resindex_to_analysis_order[j]
-                                    for j in neighbor_rix])
+            neighbor_rix = self.leafletfinder.residues.resindices[arr[:, 1]]
+            # neighbor_ix = np.array([self._resindex_to_analysis_order[j]
+            #                         for j in neighbor_rix])
             # get most common neighbors
-            leaflet_is = self.residue_leaflets[neighbor_ix]
+            leaflet_is = [self.leafletfinder.resindex_to_leaflet[r] for r in neighbor_rix]
             most_common = np.bincount(leaflet_is).argmax()
             self.residue_leaflets[i] = most_common
+        
+        self.leaflet_residues = {i: list() for i in np.unique(self.residue_leaflets)}
+        for i, lf_i in enumerate(self.residue_leaflets):
+            self.leaflet_residues[lf_i].append(i)
+        for lf_i, res_i in self.leaflet_residues.items():
+            ag = sum(self.sel_by_residue[i] for i in res_i)
+            self.leaflet_atomgroups[lf_i] = ag
 
     def run(self, start: Optional[int]=None,
             stop: Optional[int]=None, step: Optional[int]=None,

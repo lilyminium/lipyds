@@ -156,27 +156,34 @@ class LeafletFinder:
                                 cutoff=self.cutoff, pbc=self.pbc,
                                 **self.kwargs)
         # output order
-        self.leaflet_indices = [sorted(x) for x in clusters]
-        self.leaflet_residues = [self.residues[x]
-                                 for x in self.leaflet_indices]
-        self.leaflet_atoms = [x.atoms for x in self.leaflet_residues]
+        self._output_leaflet_indices = [sorted(x) for x in clusters]
+        self._output_leaflet_residues = [self.residues[x] for x in
+                                         self._output_leaflet_indices]
+        self._output_leaflet_atoms = [x.atoms for x in
+                                      self._output_leaflet_residues]
 
-        if self.order_leaflets_by_size:
-            self.leaflet_indices_by_size = sorted(self.leaflet_indices,
-                                                  key=len, reverse=True)
-            self.leaflet_residues_by_size = [self.residues[x] for x in
-                                             self.leaflet_indices_by_size]
-            self.leaflet_atoms_by_size = [x.atoms for x in
-                                          self.leaflet_residues_by_size]
+        self.leaflet_indices_by_size = sorted(self._output_leaflet_indices,
+                                              key=len, reverse=True)
+        self.leaflet_residues_by_size = [self.residues[x] for x in
+                                         self.leaflet_indices_by_size]
+        self.leaflet_atoms_by_size = [x.atoms for x in
+                                      self.leaflet_residues_by_size]
         
-        if self.order_leaflets_by_z:
-            zs = [np.mean(x.positions[:, 2]) for x in self.leaflet_atoms]
-            order = np.argsort(zs)[::-1]
+        zs = [np.mean(x.positions[:, 2]) for x in
+                self.leaflet_atoms_by_size]
+        order = np.argsort(zs)[::-1][:self.n_leaflets]
 
-            self.leaflet_indices_by_z = [self.leaflet_indices[x] for x in order]
-            self.leaflet_residues_by_z = [self.leaflet_residues[x]
-                                          for x in order]
-            self.leaflet_atoms_by_z = [self.leaflet_atoms[x] for x in order]
+        self.leaflet_indices = [self.leaflet_indices_by_size[x]
+                                for x in order]
+        self.leaflet_residues = [self.leaflet_residues_by_size[x]
+                                 for x in order]
+        self.leaflet_atoms = [self.leaflet_atoms_by_size[x]
+                              for x in order]
+
+        self.resindex_to_leaflet = {}
+        for i, residues in enumerate(self.leaflet_residues):
+            for resindex in residues.resindices:
+                self.resindex_to_leaflet[resindex] = i
 
         
     def __init__(self, universe: Union[AtomGroup, Universe],
@@ -185,13 +192,14 @@ class LeafletFinder:
                  cutoff: float=40,
                  pbc: bool=True,
                  method: str="spectralclustering",
-                 order_leaflets_by_size: bool=True,
-                 order_leaflets_by_z: bool=True,
+                 n_leaflets: int=2,
                  **kwargs):
         self.universe = universe.universe
         self.pbc = pbc
+        self.n_leaflets = n_leaflets
         self.selection = universe.select_atoms(select, periodic=pbc)
         self.sel_by_residue = self.selection.split("residue")
+        self._first_atoms = sum(ag[0] for ag in self.sel_by_residue)
         self.residues = self.selection.residues
         self.n_residues = len(self.residues)
         if select_tailgroups is not None:
@@ -201,8 +209,6 @@ class LeafletFinder:
             self.tailgroups = self.residues.atoms - self.selection
 
         self.cutoff = cutoff
-        self.order_leaflets_by_size = order_leaflets_by_size
-        self.order_leaflets_by_z = order_leaflets_by_z
         self.kwargs = dict(**kwargs)
 
         if isinstance(method, str):
@@ -215,6 +221,7 @@ class LeafletFinder:
         elif method == "spectralclustering":
             self.method = SpectralClusteringMethod(self.selection, self.tailgroups,
                                                    cutoff=self.cutoff, pbc=self.pbc,
+                                                   n_leaflets=self.n_leaflets,
                                                    **kwargs)
             self._method = self.method.run
         else:

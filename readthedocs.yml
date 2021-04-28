@@ -8,7 +8,7 @@ build:
 python:
   version: 3.8
   install:
-    - method: pip
+    - method: setuptools
       path: .
 
 conda:
