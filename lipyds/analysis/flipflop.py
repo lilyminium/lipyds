@@ -71,6 +71,7 @@ class LipidFlipFlop(LeafletAnalysisBase):
                  leaflet_width: float=8,
                  **kwargs):
         super().__init__(universe, select=select, **kwargs)
+        self.leafletfinder.order_leaflets_by_z = True
         self.cutoff = cutoff
         self.leaflet_width = leaflet_width
         self._first_atoms = sum(res.atoms[0] for res in self.residues)

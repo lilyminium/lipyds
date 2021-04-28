@@ -8,11 +8,12 @@ import numpy as np
 from MDAnalysis.analysis.distances import capped_distance
 from MDAnalysis.core.universe import Universe
 from MDAnalysis.core.groups import AtomGroup
-from MDAnalysis.lib.c_distances import unwrap_around
 from numpy.typing import ArrayLike
 
 from .base import LeafletAnalysisBase
 from ..leafletfinder.utils import get_centers_by_residue
+from ..lib.cutils import unwrap_around
+
 
 
 def lipid_area(headgroup_coordinate: ArrayLike,
@@ -121,11 +122,11 @@ class AreaPerLipid(LeafletAnalysisBase):
     ----------
     """
 
-    def __init__(self, universe: Union[AtomGroup, Universe], *args,
-                 cutoff: float=50, cutoff_other: Optional[float]=None,
-                 select_other: Optional[str]=="protein",
+    def __init__(self, universe: Union[AtomGroup, Universe],
+                 cutoff: float=50, cutoff_other: Optional[float]=15,
+                 select_other: Optional[str]="protein",
                  max_neighbors: int=100, **kwargs):
-        super().__init__(universe, *args, **kwargs)
+        super().__init__(universe, **kwargs)
         if select_other is None:
             self.other = self.universe.atoms[[]]
         else:

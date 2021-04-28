@@ -1,5 +1,5 @@
 
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Optional
 import logging
 
 import numpy as np
@@ -8,7 +8,7 @@ from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.analysis.base import AnalysisBase, ProgressBar
 from MDAnalysis.analysis.distances import capped_distance
 
-from .leafletfinder import LeafletFinder
+from ..leafletfinder import LeafletFinder
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +53,9 @@ class LeafletAnalysisBase(AnalysisBase):
                 leaflet_kwargs["select"] = select
             if "pbc" not in leaflet_kwargs:
                 leaflet_kwargs["pbc"] = pbc
-            leafletfinder = LeafletFinder(**leaflet_kwargs)
+            leafletfinder = LeafletFinder(universe, **leaflet_kwargs)
         self.leafletfinder = leafletfinder
+        self.n_leaflets = self.leafletfinder.n_leaflets
 
         # some residues may be selected for analysis, that
         # are not in the leafletfinder.
@@ -116,7 +117,7 @@ class LeafletAnalysisBase(AnalysisBase):
             self.leaflet_residues[lf_i].append(i)
         self.leaflet_atomgroups = {}
         for lf_i, res_i in self.leaflet_residues.items():
-            ag = sum(self.leaflet_residues[i] for i in res_i)
+            ag = sum(self.sel_by_residue[i] for i in res_i)
             self.leaflet_atomgroups[lf_i] = ag
 
     def run(self, start: Optional[int]=None,

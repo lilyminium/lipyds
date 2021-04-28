@@ -1,7 +1,3 @@
-"""
-Unit and regression test for the lipyds package.
-"""
-
 import pytest
 
 import numpy as np
@@ -9,7 +5,9 @@ from numpy.testing import assert_equal
 import MDAnalysis as mda
 from MDAnalysisTests.datafiles import (Martini_membrane_gro,
                                        GRO_MEMPROT, XTC_MEMPROT)
-from .datafiles import (Martini_double_membrane, DPPC_vesicle_only)
+from .datafiles import (Martini_double_membrane, DPPC_vesicle_only,
+                        NEURONAL_DDAT, NEURONAL_HDAT,
+                        NEURONAL_HSERT, NEURONAL_GLYT2)
 
 from lipyds import LeafletFinder
 
