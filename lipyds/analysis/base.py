@@ -110,6 +110,14 @@ class LeafletAnalysisBase(AnalysisBase):
             leaflet_is = self.residue_leaflets[neighbor_ix]
             most_common = np.bincount(leaflet_is).argmax()
             self.residue_leaflets[i] = most_common
+        
+        self.leaflet_residues = {i: list() for i in np.unique(self.residue_leaflets)}
+        for i, lf_i in enumerate(self.residue_leaflets):
+            self.leaflet_residues[lf_i].append(i)
+        self.leaflet_atomgroups = {}
+        for lf_i, res_i in self.leaflet_residues.items():
+            ag = sum(self.leaflet_residues[i] for i in res_i)
+            self.leaflet_atomgroups[lf_i] = ag
 
     def run(self, start: Optional[int]=None,
             stop: Optional[int]=None, step: Optional[int]=None,
