@@ -9,7 +9,7 @@ from MDAnalysis.analysis import distances
 from .base import LeafletAnalysisBase
 
 class LipidEnrichment(LeafletAnalysisBase):
-        r"""Calculate the lipid depletion-enrichment index around a protein
+    r"""Calculate the lipid depletion-enrichment index around a protein
     by leaflet.
 
     The depletion-enrichment index (DEI) of a lipid around a protein
