@@ -199,6 +199,7 @@ class LeafletFinder:
         self.n_leaflets = n_leaflets
         self.selection = universe.select_atoms(select, periodic=pbc)
         self.sel_by_residue = self.selection.split("residue")
+        self._first_atoms = sum(ag[0] for ag in self.sel_by_residue)
         self.residues = self.selection.residues
         self.n_residues = len(self.residues)
         if select_tailgroups is not None:

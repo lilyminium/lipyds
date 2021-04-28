@@ -91,13 +91,13 @@ class LipidFlipFlop(LeafletAnalysisBase):
                                    coordinates: ArrayLike) -> ArrayLike:
         relevant = pairs[pairs[:, 0] == i][:1]
         coords = coordinates[relevant]
-        center = self._first_atoms[i].positions
-        return mean_unwrap_around(coords, center, self.get_box())
+        center = self._first_atoms[i].position
+        return mean_unwrap_around(coords[0], center, self.get_box()[:3])
 
     def _single_frame(self):
         row = self.flipflop_leaflet[self._frame_index]
-        lower_ag = self.leafletfinder.leaflet_atomgroups[0]
-        upper_ag = self.leafletfinder.leaflet_atomgroups[1]
+        lower_ag = self.leaflet_atomgroups[0]
+        upper_ag = self.leaflet_atomgroups[1]
         lower_pairs = self._get_capped_distances(lower_ag)
         upper_pairs = self._get_capped_distances(upper_ag)
 
@@ -113,7 +113,7 @@ class LipidFlipFlop(LeafletAnalysisBase):
                                                            upper_ag.positions)
             lower_coords = self._get_unwrapped_coordinates(i, lower_pairs,
                                                            lower_ag.positions)
-            central_coord = self._first_atoms[[i]].positions
+            central_coord = self._first_atoms[i].position
             central_coord[:2] = 0
             upper_coords[:2] = 0
             lower_coords[:2] = 0

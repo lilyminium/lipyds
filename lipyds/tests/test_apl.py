@@ -34,6 +34,7 @@ def test_lipid_area_nopbc_y(y):
     (50, 100),
     (80, 200),
     (40, 80),
+    (40, 50),
 ])
 @pytest.mark.parametrize("filename, upper_popc, lower_popc", [
     (NEURONAL_DDAT, 50, 48),

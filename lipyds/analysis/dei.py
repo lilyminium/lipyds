@@ -47,6 +47,15 @@ class LipidEnrichment(LeafletAnalysisBase):
                                         self.n_frames))
         self.total_counts = np.zeros((self.n_leaflets, self.n_frames))
 
+    def _update_leaflets(self):
+        super()._update_leaflets()
+        self._current_leaflet_residues = {}
+        self._current_leaflet_ids = {}
+        for i, residue_ix in self.leaflet_residues.items():
+            leaflet_residues = sum(self.residues[i] for i in residue_ix)
+            self._current_leaflet_residues[i] = leaflet_residues
+            self._current_leaflet_ids[i] = getattr(leaflet_residues, self.group_by_attr)
+
     def _single_frame(self):
         # initial scoop for nearby groups
         coords_ = self.selection.positions
@@ -85,9 +94,9 @@ class LipidEnrichment(LeafletAnalysisBase):
                 min_dist = np.array([x.min() for x in split_dist])
 
                 # logistic function
-                for i, leaf in enumerate(self._current_leaflets):
-                    ids = self._current_ids[i]
-                    match, rix, lix = np.intersect1d(resix2, leaf.residues.resindices,
+                for i, leaflet_residues in self._current_leaflet_residues.items():
+                    ids = self._current_leaflet_ids[i]
+                    match, rix, lix = np.intersect1d(resix2, leaflet_residues.resindices,
                                                      assume_unique=True,
                                                      return_indices=True)
                     subdist = min_dist[rix]
@@ -101,11 +110,12 @@ class LipidEnrichment(LeafletAnalysisBase):
 
         soft = self.near_counts[:, :, self._frame_index].sum()
 
-        init_resix = self._resindices[indices]
+        init_resix = self.selection.resindices[indices]
         resix = np.unique(init_resix)
-        for i, leaf in enumerate(self._current_leaflets):
-            ids = self._current_ids[i]
-            _, ix1, ix2 = np.intersect1d(resix, leaf.residues.resindices,
+
+        for i, leaflet_residues in self._current_leaflet_residues.items():
+            ids = self._current_leaflet_ids[i]
+            _, ix1, ix2 = np.intersect1d(resix, leaflet_residues.resindices,
                                          assume_unique=True,
                                          return_indices=True)
             self.total_counts[i, self._frame_index] = len(ix1)
@@ -168,10 +178,6 @@ class LipidEnrichment(LeafletAnalysisBase):
             'Mean enrichment': dei.mean(),
             'SD enrichment': dei.std()
         }
-        if self.compute_p_value:
-            # sample T-test, 2-tailed
-            t, p = scipy.stats.ttest_1samp(dei, 1)
-            summary['Enrichment p-value'] = p
 
         return summary
 
@@ -234,19 +240,10 @@ class LipidEnrichment(LeafletAnalysisBase):
         if p_null == 0:
             summary['Mean enrichment'] = 1
             summary['SD enrichment'] = 0
-            # summary['Analytical SD enrichment'] = 0
-            # summary['Sample SD enrichment'] = 0
         
         else:
             summary['Mean enrichment'] = p_shell / p_null
             summary['SD enrichment'] = sd_frac / p_null
-            # summary['Analytical SD enrichment'] = dist_sd / p_null
-            # summary['Sample SD enrichment'] = samp_sd / p_null
-
-
-        if self.compute_p_value:
-            p = scipy.stats.binom_test(N, n_near_tot, p_null)
-            summary['Enrichment p-value'] = p
 
         return summary
 

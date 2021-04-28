@@ -72,7 +72,6 @@ class LeafletAnalysisBase(AnalysisBase):
                                           or self.selection[[]])
         self.residues_inside = self.sel_inside_leafletfinder.residues
         self.residues_outside = self.sel_outside_leafletfinder.residues
-        self._first_atoms_inside = sum(ag[0] for ag in sel_in_leafletfinder)
         self._first_atoms_outside = sum(ag[0] for ag in sel_out_leafletfinder)
         
         # placeholder leaflet values
@@ -82,6 +81,7 @@ class LeafletAnalysisBase(AnalysisBase):
     def _update_leaflets(self):
         """Update the ``residue_leaflets`` attribute for the current frame."""
         self.leafletfinder.run()
+        self.leaflet_atomgroups = {}
 
         # assign inner residues
         inside_rix = self.residues_inside.resindices
@@ -90,13 +90,13 @@ class LeafletAnalysisBase(AnalysisBase):
             lf = self.leafletfinder.resindex_to_leaflet[rix]
             self.residue_leaflets[i] = lf
 
-        if not len(self._first_atoms_outside):
+        if not self._first_atoms_outside:
             return
 
         # assign outside residues by neighbors
         box = self.get_box()
         pairs = capped_distance(self._first_atoms_outside.positions,
-                                self._first_atoms_inside.positions,
+                                self.leafletfinder._first_atoms.positions,
                                 max_cutoff=self.leafletfinder.cutoff,
                                 box=box, return_distances=False)
         splix = np.where(np.ediff1d(pairs[:, 0]))[0] + 1
@@ -104,18 +104,17 @@ class LeafletAnalysisBase(AnalysisBase):
         outside_rix = self.residues_outside.resindices
         for arr in plist:
             i = self._resindex_to_analysis_order[outside_rix[arr[0, 0]]]
-            neighbor_rix = inside_rix[arr[:, 1]]
-            neighbor_ix = np.array([self._resindex_to_analysis_order[j]
-                                    for j in neighbor_rix])
+            neighbor_rix = self.leafletfinder.residues.resindices[arr[:, 1]]
+            # neighbor_ix = np.array([self._resindex_to_analysis_order[j]
+            #                         for j in neighbor_rix])
             # get most common neighbors
-            leaflet_is = self.residue_leaflets[neighbor_ix]
+            leaflet_is = [self.leafletfinder.resindex_to_leaflet[r] for r in neighbor_rix]
             most_common = np.bincount(leaflet_is).argmax()
             self.residue_leaflets[i] = most_common
         
         self.leaflet_residues = {i: list() for i in np.unique(self.residue_leaflets)}
         for i, lf_i in enumerate(self.residue_leaflets):
             self.leaflet_residues[lf_i].append(i)
-        self.leaflet_atomgroups = {}
         for lf_i, res_i in self.leaflet_residues.items():
             ag = sum(self.sel_by_residue[i] for i in res_i)
             self.leaflet_atomgroups[lf_i] = ag
