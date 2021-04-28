@@ -17,7 +17,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-import lipyds
+# import lipyds
 
 
 # -- Project information -----------------------------------------------------
@@ -54,7 +54,7 @@ extensions = [
     'sphinx_sitemap',
 ]
 
-autosummary_generate = True
+# autosummary_generate = True
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
@@ -196,3 +196,10 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+intersphinx_mapping = {'https://docs.python.org/': None,
+                       'https://docs.scipy.org/doc/numpy/': None,
+                       'https://docs.scipy.org/doc/scipy/reference/': None,
+                       'https://matplotlib.org': None,
+                       'https://networkx.github.io/documentation/stable/': None,
+                       'https://docs.mdanalysis.org/stable/': None,
+                       }

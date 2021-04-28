@@ -1,11 +1,10 @@
 API Documentation
 =================
 
-.. autosummary::
-   :toctree: autosummary
+.. toctree::
 
-   lipyds.leafletfinder.leafletfinder
-   lipyds.leafletfinder.grouping
-   lipyds.analysis.apl
-   lipyds.analysis.dei
-   lipyds.analysis.flipflop
+   leafletfinder
+   grouping
+   apl
+   dei
+   flipflop

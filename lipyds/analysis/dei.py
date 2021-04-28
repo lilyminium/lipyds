@@ -1,3 +1,15 @@
+"""
+Lipid Depletion-Enrichment Index
+================================
+
+Classes
+-------
+
+.. autoclass:: LipidEnrichment
+    :members:
+
+"""
+
 from typing import Union
 
 import scipy

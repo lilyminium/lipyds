@@ -12,6 +12,7 @@ Welcome to lipyds's documentation!
 
    getting_started
    api
+   references
 
 
 

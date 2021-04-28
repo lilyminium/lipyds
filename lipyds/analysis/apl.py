@@ -1,4 +1,16 @@
+"""
+Lipid APL
+=========
 
+Classes
+-------
+
+.. autofunction:: lipid_area
+
+.. autoclass:: AreaPerLipid
+    :members:
+
+"""
 
 from collections import defaultdict
 import itertools

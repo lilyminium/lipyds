@@ -1,0 +1,2 @@
+.. automodule:: lipyds.leafletfinder.grouping
+

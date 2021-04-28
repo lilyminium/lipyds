@@ -1,3 +1,17 @@
+"""
+Grouping methods
+================
+
+Classes
+-------
+
+.. autoclass:: GraphMethod
+    :members:
+
+.. autoclass:: SpectralClusteringMethod
+    :members:
+"""
+
 import abc
 import warnings
 from typing import Optional, List

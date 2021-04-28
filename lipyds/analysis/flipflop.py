@@ -1,3 +1,15 @@
+"""
+Lipid Flip Flop
+===============
+
+Classes
+-------
+
+.. autoclass:: LipidFlipFlop
+    :members:
+
+"""
+
 from typing import Union
 
 import numpy as np
@@ -96,8 +108,8 @@ class LipidFlipFlop(LeafletAnalysisBase):
 
     def _single_frame(self):
         row = self.flipflop_leaflet[self._frame_index]
-        lower_ag = self.leaflet_atomgroups[0]
-        upper_ag = self.leaflet_atomgroups[1]
+        upper_ag = self.leaflet_atomgroups[0]
+        lower_ag = self.leaflet_atomgroups[1]
         lower_pairs = self._get_capped_distances(lower_ag)
         upper_pairs = self._get_capped_distances(upper_ag)
 

@@ -1,3 +1,14 @@
+"""
+LeafletFinder
+=============
+
+Classes
+-------
+
+.. autoclass:: LeafletFinder
+    :members:
+"""
+
 from typing import Optional, Union
 
 import numpy as np
@@ -12,16 +23,9 @@ from .utils import get_centers_by_residue
 class LeafletFinder:
     """Identify atoms in the same leaflet of a lipid bilayer.
 
-    You can use a predefined method ("graph", "spectralclustering" or
-    "center_of_geometry"). Alternatively, you can pass in your own function
-    as a method. This *must* accept an array of coordinates as the first
-    argument, and *must* return either a list of numpy arrays (the
-    ``components`` attribute) or a tuple of (list of numpy arrays,
-    predictor object). The numpy arrays should be arrays of indices of the
-    input coordinates, such that ``k = components[i][j]`` means that the
-    ``k``th coordinate belongs to the ``i-th`` leaflet.
-    The class will also pass the following keyword arguments to your function:
-    ``cutoff``, ``box``, ``return_predictor``.
+    You can use a predefined method ("graph", "spectralclustering").
+    Alternatively, you can pass in your own function
+    as a method.
 
     Parameters
     ----------
@@ -44,22 +48,9 @@ class LeafletFinder:
         computing distances
     method: str or function (optional)
         method to use to assign groups to leaflets. Choose
-        "graph" for :func:`~distances.group_coordinates_by_graph`;
+        "graph" for :class:`~lipyds.leafletfinder.grouping.GraphMethod`;
         "spectralclustering" for
-        :func:`~distances.group_coordinates_by_spectralclustering`;
-        "center_of_geometry" for
-        :func:`~distances.group_coordinates_by_cog`;
-        "orientation" to calculate orientations for each lipid and
-        use :func:`~distances.group_vectors_by_orientation`
-        or alternatively, pass in your own method. This *must* accept an
-        array of coordinates as the first argument, and *must*
-        return either a list of numpy arrays (the ``components``
-        attribute) or a tuple of (list of numpy arrays, predictor object).
-    calculate_orientations: bool (optional)
-        if your custom method requires the orientation vector of each lipid,
-        set ``calculate_orientations=True`` and an Nx3 array of orientation
-        vectors will get passed into your function with the keyword
-        ``orientation``. This is set to ``True`` for ``method="orientation"``.
+        :class:`~lipyds.leafletfinder.grouping.SpectralClusteringMethod`;
     **kwargs:
         Passed to ``method``
 
@@ -71,77 +62,37 @@ class LeafletFinder:
         Selection string
     selection: AtomGroup
         Atoms that the analysis is applied to
+    residues: ResidueGroup
+        residues that the analysis is applied to
     headgroups: List of AtomGroup
         Atoms that the analysis is applied to, grouped by residue.
     pbc: bool
         Whether to use PBC or not
-    box: numpy.ndarray or None
-        Cell dimensions to use in calculating distances
-    predictor:
-        The object used to group the leaflets. :class:`networkx.Graph` for
-        ``method="graph"``; :class:`sklearn.cluster.SpectralClustering` for
-        ``method="spectralclustering"``; or :class:`numpy.ndarray` for
-        ``method="center_of_geometry"``.
-    positions: numpy.ndarray (N x 3)
-        Array of positions of headgroups to use. If your selection has
-        multiple atoms for each residue, this is the center of geometry.
-    orientations: numpy.ndarray (N x 3) or None
-        Array of orientation vectors calculated with ``lipid_orientation``.
-    components: list of numpy.ndarray
-        List of indices of atoms in each leaflet, corresponding to the
-        order of `selection`. ``components[i]`` is the array of indices
-        for the ``i``-th leaflet. ``k = components[i][j]`` means that the
-        ``k``-th atom in `selection` is in the ``i``-th leaflet.
-        The components are sorted by size for the "spectralclustering" and
-        "graph" methods. For the "center_of_geometry" method, they are
-        sorted by the order that the centers are passed into the class.
-    groups: list of AtomGroups
-        List of AtomGroups in each leaflet. ``groups[i]`` is the ``i``-th
-        leaflet. The components are sorted by size for the "spectralclustering"
-        and "graph" methods. For the "center_of_geometry" method, they are
-        sorted by the order that the centers are passed into the class.
-    leaflets: list of AtomGroup
-        List of AtomGroups in each leaflet. ``groups[i]`` is the ``i``-th
-        leaflet. The leaflets are sorted by z-coordinate so that the
-        upper-most leaflet is first.
-    sizes: list of ints
-        List of the size of each leaflet in ``groups``.
-
-
-    Example
-    -------
-    The components of the graph are stored in the list
-    :attr:`LeafletFinder.components`; the atoms in each component are numbered
-    consecutively, starting at 0. To obtain the atoms in the input structure
-    use :attr:`LeafletFinder.groups`::
-
-       L = LeafletFinder(PDB, 'name P*')
-       leaflet_1 = L.groups[0]
-       leaflet_2 = L.groups[1]
-
-    The residues can be accessed through the standard MDAnalysis mechanism::
-
-       leaflet_1.residues
-
-    provides a :class:`~MDAnalysis.core.groups.ResidueGroup`
-    instance. Similarly, all atoms in the first leaflet are then ::
-
-       leaflet_1.residues.atoms
-
-
-    See also
-    --------
-    :func:`~MDAnalysis.analysis.distances.group_coordinates_by_graph`
-    :func:`~MDAnalysis.analysis.distances.group_coordinates_by_spectralclustering`
-
-
-    .. versionchanged:: 2.0.0
-        Refactored to move grouping code into ``distances`` and use
-        multiple methods. Added the "spectralclustering" and
-        "center_of_geometry" methods.
-
-    .. versionchanged:: 1.0.0
-       Changed `selection` keyword to `select`
+    leaflet_indices_by_size: list of list of indices
+        List of residue indices in each leaflet. This is the index
+        of residues in ``residues``, *not* the canonical ``resindex``
+        attribute from MDAnalysis. Leaflets are sorted by size such
+        that the largest leaflet is first.
+    leaflet_residues_by_size: list of ResidueGroup
+        List of ResidueGroups in each leaflet.
+        Leaflets are sorted by size such
+        that the largest leaflet is first.
+    leaflet_atoms_by_size: list of AtomGroup
+        List of AtomGroups in each leaflet. 
+        Leaflets are sorted by size such
+        that the largest leaflet is first.
+    leaflet_indices: list of list of indices
+        List of residue indices in each leaflet. This is the index
+        of residues in ``residues``, *not* the canonical ``resindex``
+        attribute from MDAnalysis.
+    leaflet_residues: list of ResidueGroup
+        List of ResidueGroups in each leaflet. 
+        The leaflets are sorted by z-coordinate so that the
+        lower-most leaflet is first.
+    leaflet_atoms: list of AtomGroup
+        List of AtomGroups in each leaflet. 
+        The leaflets are sorted by z-coordinate so that the
+        lower-most leaflet is first.
     """
 
     def run(self):
@@ -171,7 +122,7 @@ class LeafletFinder:
         
         zs = [np.mean(x.positions[:, 2]) for x in
                 self.leaflet_atoms_by_size]
-        order = np.argsort(zs)[::-1][:self.n_leaflets]
+        order = np.argsort(zs[:self.n_leaflets])[::-1]
 
         self.leaflet_indices = [self.leaflet_indices_by_size[x]
                                 for x in order]
@@ -228,11 +179,6 @@ class LeafletFinder:
             self._method = self.method = method
         self.run()
 
-    def groups_iter(self):
-        """Iterator over all leaflet :meth:`groups`"""
-        for group in self.groups:
-            yield group
-
     def write_selection(self, filename, mode="w", format=None, **kwargs):
         """Write selections for the leaflets to *filename*.
 
@@ -246,78 +192,9 @@ class LeafletFinder:
         with sw(filename, mode=mode,
                 preamble=f"Leaflets found by {repr(self)}\n",
                 **kwargs) as writer:
-            for i, ag in enumerate(self.groups, 1):
+            for i, ag in enumerate(self.leaflet_atoms, 1):
                 writer.write(ag, name=f"leaflet_{i:d}")
 
     def __repr__(self):
         return (f"LeafletFinder(method={self.method}, select='{self.select}', "
                 f"cutoff={self.cutoff:.1f} Å, pbc={self.pbc})")
-
-
-
-def optimize_cutoff(universe, select, dmin=10.0, dmax=20.0, step=0.5,
-                    max_imbalance=0.2, **kwargs):
-    r"""Find cutoff that minimizes number of disconnected groups.
-
-    Applies heuristics to find best groups:
-
-    1. at least two groups (assumes that there are at least 2 leaflets)
-    2. reject any solutions for which:
-
-       .. math::
-
-              \frac{|N_0 - N_1|}{|N_0 + N_1|} > \mathrm{max_imbalance}
-
-       with :math:`N_i` being the number of lipids in group
-       :math:`i`. This heuristic picks groups with balanced numbers of
-       lipids.
-
-    Parameters
-    ----------
-    universe : Universe
-        :class:`MDAnalysis.Universe` instance
-    select : AtomGroup or str
-        AtomGroup or selection string as used for :class:`LeafletFinder`
-    dmin : float (optional)
-    dmax : float (optional)
-    step : float (optional)
-        scan cutoffs from `dmin` to `dmax` at stepsize `step` (in Angstroms)
-    max_imbalance : float (optional)
-        tuning parameter for the balancing heuristic [0.2]
-    kwargs : other keyword arguments
-        other arguments for  :class:`LeafletFinder`
-
-    Returns
-    -------
-    (cutoff, N)
-         optimum cutoff and number of groups found
-
-
-    .. Note:: This function can die in various ways if really no
-              appropriate number of groups can be found; it ought  to be
-              made more robust.
-
-    .. versionchanged:: 1.0.0
-       Changed `selection` keyword to `select`
-    """
-    kwargs.pop('cutoff', None)  # not used, so we filter it
-    _sizes = []
-    for cutoff in np.arange(dmin, dmax, step):
-        LF = LeafletFinder(universe, select, cutoff=cutoff, method="graph", **kwargs)
-        # heuristic:
-        #  1) N > 1
-        #  2) no imbalance between large groups:
-        sizes = LF.sizes
-        if len(sizes) < 2:
-            continue
-        n0 = float(sizes[0])  # sizes of two biggest groups ...
-        n1 = float(sizes[1])  # ... assumed to be the leaflets
-        imbalance = np.abs(n0 - n1) / (n0 + n1)
-        # print "sizes: %(sizes)r; imbalance=%(imbalance)f" % vars()
-        if imbalance > max_imbalance:
-            continue
-        _sizes.append((cutoff, len(LF.sizes)))
-    results = np.rec.fromrecords(_sizes, names="cutoff,N")
-    del _sizes
-    results.sort(order=["N", "cutoff"])  # sort ascending by N, then cutoff
-    return results[0]  # (cutoff,N) with N>1 and shortest cutoff
