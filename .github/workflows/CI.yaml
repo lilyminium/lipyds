@@ -124,6 +124,8 @@ jobs:
         git fetch --depth 50 upstream $BRANCH gh-pages
         git reset upstream/gh-pages
 
+        git add .
+
         # check for anything to commit
         # https://stackoverflow.com/questions/3878624/how-do-i-programmatically-determine-if-there-are-uncommited-changes
         git diff-index --quiet HEAD -- || git commit -m "rebuilt html docs for version ${VERSION} from branch ${BRANCH} with sphinx at ${REV}"
