@@ -1,0 +1,2 @@
+.. automodule:: lipyds.analysis.flipflop
+
