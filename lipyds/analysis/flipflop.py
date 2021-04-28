@@ -29,7 +29,7 @@ class LipidFlipFlop(LeafletAnalysisBase):
     select: str (optional)
         A :meth:`Universe.select_atoms` selection string
         for atoms that define the lipid head groups, e.g.
-        universe.atoms.PO4 or "name PO4" or "name P*"
+        "name PO4" or "name P*"
     cutoff: float (optional)
         Cutoff distance (ångström) to look for neighbors
     leaflet_width: float (optional)

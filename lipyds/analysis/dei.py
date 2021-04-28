@@ -9,6 +9,64 @@ from MDAnalysis.analysis import distances
 from .base import LeafletAnalysisBase
 
 class LipidEnrichment(LeafletAnalysisBase):
+        r"""Calculate the lipid depletion-enrichment index around a protein
+    by leaflet.
+
+    The depletion-enrichment index (DEI) of a lipid around a protein
+    indicates how enriched or depleted that lipid in the lipid annulus
+    around the protein, with respect to the density of the lipid in the bulk
+    membrane.
+
+    The results of this analysis contain these values:
+
+    * 'Near protein': the number of lipids :math:`L` within
+        cutoff :math:`r` of the protein
+    * 'Fraction near protein': the fraction of the lipids :math:`L`
+        with respect to all lipids within cutoff :math:`r` of the
+        protein: :math:`\frac{n(x_{(L, r)})}{n(x_r)}`
+    * 'Enrichment': the depletion-enrichment index.
+
+    The hard-cutoff, gaussian distribution algorithm was obtained from
+    [Corradi2018]_. The soft-cutoff, binomial distribution algorithm
+    was first published in [Wilson2021]_. Please cite them if you use 
+    this analysis in published work.
+
+
+    Parameters
+    ----------
+    universe: Universe or AtomGroup
+        The atoms to apply this analysis to.
+    select: str (optional)
+        A :meth:`Universe.select_atoms` selection string
+        for atoms that define the lipid head groups, e.g.
+        "name PO4" or "name P*"
+    select_protein: str (optional)
+        Selection string for the protein.
+    cutoff: float (optional)
+        Cutoff in ångström
+    buffer: float (optional)
+        buffer zone length in ångström. If > 0, this means a
+        soft cutoff is implemented.
+    beta: float (optional)
+        beta controls the sharpness of soft-cutoff.
+    distribution: str (optional)
+        Whether to use the binomial or gaussian distribution
+    **kwargs
+        Passed to :class:`~lipyds.analysis.base.LeafletAnalysisBase`.
+
+
+    Attributes
+    ----------
+    dei_by_leaflet: list of dicts
+        A list of dictionaries of time series data for each leaflet.
+        The first dictionary is for the first leaflet, etc.
+        Leaflets are sorted by z-coordinate; the first leaflet
+        has the lowest z-coordinate.
+    leaflets_summary: list of dicts
+        A list of summary dictionaries for each leaflet.
+        The first dictionary is for the first leaflet, etc.
+    """
+
     def __init__(self, universe: Union[AtomGroup, Universe], 
                  select_protein: str="protein",
                  cutoff: float=6,

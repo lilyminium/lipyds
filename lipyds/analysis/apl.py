@@ -15,7 +15,6 @@ from ..leafletfinder.utils import get_centers_by_residue
 from ..lib.cutils import unwrap_around
 
 
-
 def lipid_area(headgroup_coordinate: ArrayLike,
                neighbor_coordinates: ArrayLike,
                other_coordinates: Optional[ArrayLike]=None,
@@ -120,6 +119,30 @@ class AreaPerLipid(LeafletAnalysisBase):
 
     Parameters
     ----------
+    universe: AtomGroup or Universe
+        :class:`~MDAnalysis.core.universe.Universe` or
+        :class:`~MDAnalysis.core.groups.AtomGroup` to operate on.
+    select: str (optional)
+        A :meth:`Universe.select_atoms` selection string
+        for atoms that define the lipid head groups, e.g.
+        "name PO4" or "name P*"
+    select_other: str (optional)
+        A :meth:`Universe.select_atoms` selection string
+        for atoms that should be incorporated in the area calculation
+        but that you do not want to calculat areas for.
+    cutoff: float (optional)
+        Cutoff distance (ångström) to look for neighbors
+    cutoff_other: float (optional)
+        Cutoff distance (ångström) to look for neighbors in the ``other``
+        selection. This is generally shorter than ``cutoff`` -- e.g.
+        you may look for only lipid headgroups in ``select``, but all
+        protein atoms in ``select_other``.
+    max_neighbors: int (optional)
+        Maximum neighbors to consider for area calculation. Past 40 the
+        area tends to converge, and the lower the number of neighbors,
+        the more efficient the calculation.
+    **kwargs
+        Passed to :class:`~lipyds.analysis.base.LeafletAnalysisBase`
     """
 
     def __init__(self, universe: Union[AtomGroup, Universe],

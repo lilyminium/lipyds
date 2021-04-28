@@ -13,7 +13,68 @@ from ..leafletfinder import LeafletFinder
 logger = logging.getLogger(__name__)
 
 class LeafletAnalysisBase(AnalysisBase):
+    """
+    Base class for leaflet-based analysis.
 
+    Subclasses should overwrite ``_single_frame()``.
+
+    Parameters
+    ----------
+    universe: AtomGroup or Universe
+        :class:`~MDAnalysis.core.universe.Universe` or
+        :class:`~MDAnalysis.core.groups.AtomGroup` to operate on.
+    select: str (optional)
+        A :meth:`Universe.select_atoms` selection string
+        for atoms that define the lipid head groups, e.g.
+        "name PO4" or "name P*"
+    leafletfinder: LeafletFinder instance (optional)
+        A :class:`~lipyds.leafletfinder.leafletfinder.LeafletFinder`
+        instance. If this is not provided, a new LeafletFinder
+        instance will be created using ``leaflet_kwargs``.
+    leaflet_kwargs: dict (optional)
+        Arguments to use in creating a new LeafletFinder instance.
+        Ignored if an instance is already provided to ``leafletfinder``.
+        If ``select`` and ``pbc`` are not present in ``leaflet_kwargs``,
+        the values given to ``LeafletAnalysisBase`` are used.
+    group_by_attr: str (optional)
+        How to group the resulting analysis.
+    pbc: bool (optional)
+        Whether to use PBC
+    update_leaflet_step: int (optional)
+        How often to re-run the LeafletFinder. If 1, the LeafletFinder
+        is re-run for every frame of the analysis. This can be slow.
+        It is unnecessary if you do not have flip-flopping lipids such
+        as cholesterol, or you do not care where they are.
+    **kwargs:
+        Passed to :class:`~MDAnalysis.analysis.base.AnalysisBase`
+
+    
+    Attributes
+    ----------
+    selection: :class:`~MDAnalysis.core.groups.AtomGroup`
+        Selection for the analysis
+    sel_by_residue: list of :class:`~MDAnalysis.core.groups.AtomGroup`
+        AtomGroups in a list, split up by residue
+    residues: :class:`~MDAnalysis.core.groups.ResidueGroup`
+        Residues used in the analysis
+    n_residues: int
+        Number of residues
+    ids: numpy.ndarray
+        Labels used, obtained from ``group_by_attr``
+    leafletfinder: LeafletFinder
+    n_leaflets: int
+        Number of leaflets
+    residue_leaflets: numpy.ndarray of ints, (n_residues,)
+        The leaflet index of each residue. Leaflets are sorted by z-coordinate,
+        i.e. 0 is the leaflet that has the lowest z-coordinate.
+    leaflet_residues: dict of (int, list of ints)
+        Dictionary where the key is the leaflet index and the value is a list
+        of the residue index in the ``residues`` attribute. This is *not*
+        the canonical ``resindex`` attribute in MDAnalysis.
+    leaflet_atomgroups: dict of (int, AtomGroup)
+        Dictionary where the key is the leaflet index and the value is the
+        subset AtomGroup of ``selection`` that is in that leaflet.
+    """
     def __init__(self, universe: Union[AtomGroup, Universe],
                  select: Optional[str]="all",
                  leafletfinder: Optional[LeafletFinder]=None,
