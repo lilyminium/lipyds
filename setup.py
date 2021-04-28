@@ -75,6 +75,7 @@ if __name__ == "__main__":
         long_description = "\n".join(short_description[2:])
 
     install_requires = [
+            'cython',
             'numpy>=1.16.0',
             'mdanalysis>=1.0.0',
             'mdanalysistests>=1.0.0',
