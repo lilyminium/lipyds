@@ -14,6 +14,7 @@ from typing import Optional, Union
 import numpy as np
 from MDAnalysis.core.universe import Universe
 from MDAnalysis.core.groups import AtomGroup
+from MDAnalysis.selections import get_writer
 
 from .grouping import GraphMethod, SpectralClusteringMethod
 from .utils import get_centers_by_residue
@@ -188,7 +189,7 @@ class LeafletFinder:
         See :class:`MDAnalysis.selections.base.SelectionWriter` for all
         options.
         """
-        sw = selections.get_writer(filename, format)
+        sw = get_writer(filename, format)
         with sw(filename, mode=mode,
                 preamble=f"Leaflets found by {repr(self)}\n",
                 **kwargs) as writer:
@@ -196,5 +197,5 @@ class LeafletFinder:
                 writer.write(ag, name=f"leaflet_{i:d}")
 
     def __repr__(self):
-        return (f"LeafletFinder(method={self.method}, select='{self.select}', "
+        return (f"LeafletFinder(method={self.method}, select='{self.selection}', "
                 f"cutoff={self.cutoff:.1f} Å, pbc={self.pbc})")
