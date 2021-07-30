@@ -277,31 +277,37 @@ class LeafletAnalysisBase(AnalysisBase):
         times = []
         propnames = []
         attrnames = []
+
         for k, v in self.results.items():
-            if k.endswith("_by_attr"):
-                base = k[:-8]
-                for attrname, array in v.items():
-                    n_leaflets, n_frames = array.shape
-                    values_ = np.concatenate(array)
-                    leaflets_ = np.repeat(np.arange(n_leaflets), n_frames)
-                    times_ = np.tile(self.times, n_leaflets)
-                    attrnames_ = [attrname] * len(frames)
-                    propnames_ = [base] * len(frames)
-                    values.append(values_)
-                    leaflets.append(leaflets_)
-                    times.append(times_)
-                    attrnames.extend(attrnames_)
-                    propnames.extend(propnames_)
+            if not k.endswith("_by_attr"):
+                continue
+
+            base = k[:-8]
+            for attrname, array in v.items():
+                n_leaflets, n_residues, n_frames = array.shape
+
+                values_ = np.concatenate(np.concatenate(array))
+                leaflets_ = np.repeat(np.arange(n_leaflets), n_residues * n_frames)
+                times_ = np.tile(self.times, n_residues * n_leaflets)
+
+                # print(values_.shape, leaflets_.shape, times_.shape, array.shape)
+                mask = np.where(~np.isnan(values_))[0]
+                values.append(values_[mask])
+                leaflets.append(leaflets_[mask])
+                times.append(times_[mask])
+                attrnames.extend([attrname] * len(mask))
+                propnames.extend([base] * len(mask))
+
         values = np.concatenate(values)
         leaflets = np.concatenate(leaflets) + 1
         times = np.concatenate(times)
-        mask = np.where(~np.isnan(values))[0]
+    #     mask = np.where(~np.isnan(values))[0]
 
-        dct = {"Leaflet": leaflets[mask],
-               "Value": values[mask],
-               "Time": times[mask],
-               "Label": [attrnames[i] for i in mask],
-               "Property": [propnames[i] for i in mask]}
+        dct = {"Leaflet": leaflets,
+               "Value": values,
+               "Time": times,
+               "Label": attrnames,
+               "Property": propnames}
 
         return pd.DataFrame(dct)
 
@@ -401,4 +407,3 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
     def _wrapped_single_frame(self):
         self.construct_bilayers()
         self._single_frame()
-

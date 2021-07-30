@@ -20,7 +20,7 @@ from MDAnalysis.analysis.distances import capped_distance, calc_bonds
 from MDAnalysis.lib.mdamath import norm
 
 from .base import LeafletAnalysisBase
-from ..leafletfinder.utils import get_centers_by_residue
+from ..lib.mdautils import get_centers_by_residue
 from ..lib.cutils import unwrap_around, mean_unwrap_around
 
 
@@ -78,20 +78,20 @@ class LipidFlipFlop(LeafletAnalysisBase):
     inter_i = -1
 
     def __init__(self, universe: Union[AtomGroup, Universe],
-                 select: str="resname CHOL",
-                 cutoff: float=25,
-                 leaflet_width: float=8,
+                 select: str = "resname CHOL",
+                 cutoff: float = 25,
+                 leaflet_width: float = 8,
                  **kwargs):
         super().__init__(universe, select=select, **kwargs)
         self.leafletfinder.order_leaflets_by_z = True
         self.cutoff = cutoff
         self.leaflet_width = leaflet_width
         self._first_atoms = sum(res.atoms[0] for res in self.residues)
-    
+
     def _prepare(self):
         self.flipflop_leaflet = np.ones((self.n_frames, self.n_residues),
                                         dtype=int) * self.inter_i
-    
+
     def _get_capped_distances(self, atomgroup: AtomGroup) -> ArrayLike:
         return capped_distance(self._first_atoms.positions,
                                atomgroup.positions,
@@ -120,7 +120,7 @@ class LipidFlipFlop(LeafletAnalysisBase):
             elif i not in upper_pairs[:, 0]:
                 row[i] = self.lower_i
                 continue
-            
+
             upper_coords = self._get_unwrapped_coordinates(i, upper_pairs,
                                                            upper_ag.positions)
             lower_coords = self._get_unwrapped_coordinates(i, lower_pairs,
@@ -129,10 +129,10 @@ class LipidFlipFlop(LeafletAnalysisBase):
             central_coord[:2] = 0
             upper_coords[:2] = 0
             lower_coords[:2] = 0
-            
+
             upper_dist = calc_bonds(upper_coords, central_coord)
             lower_dist = calc_bonds(lower_coords, central_coord)
-            
+
             if upper_dist <= self.leaflet_width:
                 row[i] = self.upper_i
             elif lower_dist <= self.leaflet_width:
