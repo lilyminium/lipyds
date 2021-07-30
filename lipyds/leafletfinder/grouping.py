@@ -21,8 +21,8 @@ from MDAnalysis.analysis.distances import contact_matrix
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .utils import (get_centers_by_residue, get_orientations,
-                    get_distances_with_projection)
+from ..lib.mdautils import (get_centers_by_residue, get_orientations,
+                            get_distances_with_projection)
 
 
 class GroupingMethod(abc.ABC):

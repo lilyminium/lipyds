@@ -3,22 +3,23 @@ from typing import Optional
 
 import numpy as np
 from numpy.typing import ArrayLike
-from MDAnalysis.analysis.distances import capped_distance
+from MDAnalysis.lib.distances import capped_distance
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.lib.mdamath import norm
 
-from ..lib.cutils import unwrap_around, mean_unwrap_around, calc_cosine_similarity
+from .cutils import unwrap_around, mean_unwrap_around, calc_cosine_similarity
+
 
 def get_centers_by_residue(selection: AtomGroup,
-                           centers: Optional[ArrayLike]=None,
-                           box: Optional[ArrayLike]=None) -> ArrayLike:
+                           centers: Optional[ArrayLike] = None,
+                           box: Optional[ArrayLike] = None) -> ArrayLike:
     """
     Get center-of-geometry of residues, unwrapping over periodic boundaries
 
     Parameters
     ----------
     selection: AtomGroup
-        
+
     """
     if box is None:
         return selection.center(None, compound='residues', pbc=False)
@@ -31,10 +32,10 @@ def get_centers_by_residue(selection: AtomGroup,
 
 
 def get_orientations(headgroups: AtomGroup,
-                     tailgroups: Optional[AtomGroup]=None,
-                     box: Optional[AtomGroup]=None,
-                     headgroup_centers: Optional[AtomGroup]=None,
-                     normalize: bool=False) -> ArrayLike:
+                     tailgroups: Optional[AtomGroup] = None,
+                     box: Optional[AtomGroup] = None,
+                     headgroup_centers: Optional[AtomGroup] = None,
+                     normalize: bool = False) -> ArrayLike:
     if headgroup_centers is None:
         headgroup_centers = get_centers_by_residue(headgroups, box=box)
     if tailgroups is None:
@@ -52,8 +53,8 @@ def get_orientations(headgroups: AtomGroup,
 def get_distances_with_projection(coordinates: ArrayLike,
                                   orientations: ArrayLike,
                                   cutoff: float,
-                                  box: Optional[ArrayLike]=None,
-                                  angle_factor: float=1) -> ArrayLike:
+                                  box: Optional[ArrayLike] = None,
+                                  angle_factor: float = 1) -> ArrayLike:
     n_coordinates = len(coordinates)
     # set up distance matrix
     filler = (angle_factor + 1) * cutoff
@@ -68,7 +69,6 @@ def get_distances_with_projection(coordinates: ArrayLike,
     plist = np.split(pairs, splix)
     dlist = np.split(dists, splix)
 
-
     # project distances onto orientation vector
     for p, d in zip(plist, dlist):
         i = p[0, 0]
@@ -82,12 +82,12 @@ def get_distances_with_projection(coordinates: ArrayLike,
         if box is not None:
             unwrap_around(neigh_, i_coord, box[:3])
         neigh_ -= i_coord
-        
+
         vec = orientations[[i]]
         if np.any(np.isnan(vec)):
             continue
 
-        ang_ = calc_cosine_similarity(vec, neigh_)        
+        ang_ = calc_cosine_similarity(vec, neigh_)
         proj = np.abs(d * ang_)
         # weight projected distance by angle_factor
         half = (proj * angle_factor)[0]
