@@ -132,36 +132,13 @@ class LeafletAnalysisBase(AnalysisBase):
         self.id_to_indices = {x: np.where(self.ids == x)[0]
                               for x in self.unique_ids}
 
-        # # get mapping dicts
-        # self._resindex_to_analysis_order = {}
-        # self._resindex_to_id = {}
-        # for i, res in enumerate(self.residues):
-        #     self._resindex_to_analysis_order[res.resindex] = i
-        #     self._resindex_to_id[res.resindex] = self.ids[i]
-
         # set up leafletfinder
         self._setup_leafletfinder(leafletfinder, leaflet_kwargs)
         self._outside = self.leafletfinder.get_first_outside_atoms(self.residues)
-        # if len(self._outside):
-        #     self._set_leaflets = self._set_leaflets_with_outside
-        self._get_indexing_arrays()
-        # else:
-        #     self._set_leaflets = self._set_leaflets_from_finder
+        self._set_indexing_arrays()
 
         # # placeholder leaflet values
         self.residue_leaflets = np.full(self.n_residues, -1, dtype=int)
-
-    # def __getattr__(self, attr):
-    #     try:
-    #         return self.results.attr
-    #     except AttributeError:
-    #         return super().__getattr__(attr)
-
-    # def __setattr__(self, attr, value):
-    #     if attr in self.results:
-    #         setattr(self.results, attr, value)
-    #     else:
-    #         super().__setattr__(attr, value)
 
     def _setup_leafletfinder(self, leafletfinder: Optional[LeafletFinder] = None,
                              leaflet_kwargs: Dict[str, Any] = {}):
@@ -175,7 +152,7 @@ class LeafletAnalysisBase(AnalysisBase):
         self.leafletfinder = leafletfinder
         self.n_leaflets = self.leafletfinder.n_leaflets
 
-    def _get_indexing_arrays(self):
+    def _set_indexing_arrays(self):
         _in_dict = get_index_dict(self.leafletfinder.residues.resindices,
                                   self.residues.resindices)
         self._inside_ix = np.array(list(_in_dict.keys()), dtype=int)
@@ -193,7 +170,6 @@ class LeafletAnalysisBase(AnalysisBase):
         leaflets = np.full(self.n_residues, -1, dtype=int)
         leaflets[self._inside_ix] = self.leafletfinder.residue_leaflets[self._inside_lfinder_ix]
         outside = self.leafletfinder.assign_atoms_by_distance(self._outside)
-        print("outside", outside)
         leaflets[self._outside_ix] = outside
         self.residue_leaflets = leaflets
 
@@ -247,17 +223,6 @@ class LeafletAnalysisBase(AnalysisBase):
 
     def _nan_array_by_leaflet(self):
         return np.full(self._shape_by_leaflet, np.nan)
-
-    # def _by_leaflet_to_by_attr(self, array):
-    #     by_attr = []
-    #     for leaflet in array.transpose((1, 2, 0)):
-    #         # n_leaflet, n_residues, n_frames
-    #         leaflet_attrs = {}
-    #         for label in self.unique_ids:
-    #             values = leaflet[self.id_to_indices[label]]
-    #             leaflet_attrs[attr] = values[~np.isnan(values)]
-    #         by_attr.append(leaflet_attrs)
-    #     return by_attr
 
     def _by_leaflet_to_by_attr(self, array):
         return {x: array[:, ix, :] for x, ix in self.id_to_indices.items()}
@@ -354,7 +319,6 @@ class LeafletAnalysisBase(AnalysisBase):
             if k.endswith("_by_attr"):
                 base = k[:-8]
                 for attrname, array in v.items():
-                    # print(attrname, array.shape)
                     count = (~np.isnan(array)).sum(axis=(1, 2))
                     mean = np.nanmean(array, axis=(1, 2))
                     std = np.nanstd(array, axis=(1, 2))
@@ -370,7 +334,7 @@ class LeafletAnalysisBase(AnalysisBase):
                     variances.append(var)
                     attrnames.extend(attrnames_)
                     propnames.extend(propnames_)
-        # print(counts)
+
         counts = np.concatenate(counts)
         leaflets = np.concatenate(leaflets) + 1
         means = np.concatenate(means)
@@ -418,10 +382,6 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         bilayers = []
         frame = self._frame_index
         for i in range(0, n_leaflets, 2):
-            # lower = self.leaflet_point_coordinates[i]
-            # lower_indices = self.leaflet_indices[i]
-            # upper = self.leaflet_point_coordinates[i + 1]
-            # upper_indices = self.leaflet_indices[i + 1]
 
             lower = self.leaflet_point_coordinates[i + 1]
             lower_indices = self.leaflet_indices[i + 1]
@@ -436,17 +396,9 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
                               normal=self.normal_axis,
                               cutoff_other=self.cutoff_other)
             bilayers.append(bilayer)
-            # self.middle_bilayer_points[frame][i // 2] = bilayer.middle.points
         self.bilayers = bilayers
 
     def _wrapped_single_frame(self):
         self.construct_bilayers()
         self._single_frame()
 
-    # def _wrapped_prepare(self):
-    #     shape = (self.n_frames, self.n_leaflets // 2, self.n_residues)
-    #     self.middle_bilayer_points = np.full(shape, np.nan)
-    #     self._prepare()
-
-    # def _wrapped_conclude(self):
-    #     self.average_bilayer_surfaces = []

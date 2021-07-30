@@ -2,14 +2,10 @@ import numpy as np
 from MDAnalysis.lib._augment import augment_coordinates
 from MDAnalysis.lib import distances as mdadist
 from MDAnalysis.lib import mdamath
-# from sklearn.decomposition import PCA
-from scipy.spatial import ConvexHull, KDTree, Voronoi
+from scipy.spatial import ConvexHull, KDTree
 from scipy.spatial.transform import Rotation
-# import open3d as o3d
-# from open3d.cpu.pybind import utility as o3dutility
 import pyvista as pv
 
-from ..lib.cutils import calc_cosine_similarity
 from ..lib import pvutils
 
 
@@ -87,109 +83,34 @@ class Surface:
         neighbors = self.edges[np.where(matches)[0]]
         return np.unique(neighbors)
 
-    # def compute_vertex_area(self, index, n_neighbors=4):
-    #     face_indices = np.where(self.faces == index)[0]
-    #     faces = self.faces[face_indices]
-    #     neighbors = self.get_neighbors(np.ravel(faces))
-    #     iteration = 1
-    #     # print(len(neighbors))
-    #     while iteration < n_neighbors:
-    #         neighbors = self.get_neighbors(neighbors)
-    #         # print("found unique", len(neighbors))
-    #         iteration += 1
-    #     neighbors = [i for i in np.unique(neighbors) if i != index]
-    #     # project to plane
-    #     points = self.surface.points[np.r_[index, neighbors]]
-    #     points -= points.mean(axis=0)
-    #     # points -= points.mean(axis=0)
-    #     # print("3d", more_points)
-
-    #     # project onto plane
-    #     Mt_M = np.matmul(points.T, points)
-    #     u, s, vh = np.linalg.linalg.svd(Mt_M)
-    #     xy = np.matmul(points, vh[:2].T)
-    #     xy -= xy[0]
-    #     # print("projected", xy)
-
-    #     # convex hull
-        # vor = Voronoi(xy)
-        # headgroup_cell_int = vor.point_region[0]
-        # headgroup_cell = vor.regions[headgroup_cell_int]
-        # x, y = np.array([vor.vertices[x] for x in headgroup_cell]).T
-        # area = np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:])
-        # area += (x[-1] * y[0] - y[-1] * x[0])
-        # lipid_area = 0.5 * np.abs(area)
-
-    #     return lipid_area
-
     def compute_vertex_area(self, index, n_neighbors=2):
         face_indices = np.where(self.faces == index)[0]
         if len(face_indices) < 3:
+            # this is not between other points, ignore
             return np.nan
         faces = self.faces[face_indices]
-        neighbors = self.get_neighbors(np.ravel(faces))
-        iteration = 1
-        # print(len(neighbors))
-        while iteration < n_neighbors:
-            neighbors = self.get_neighbors(neighbors)
-            # print("found unique", len(neighbors))
-            iteration += 1
-        neighbors = [i for i in np.unique(neighbors) if i != index]
-        # print("faces", faces)
+
         # get center of triangles -- "voronoi-ish"
         face_centers = self.cell_centers.points[face_indices]
-        # project to plane
         points = np.r_[[self.surface.points[index]], face_centers]
-        # points = self.surface.points[np.r_[index, neighbors]]
         points -= points[0]
-        print(len(points))
-        # n_points = len(points)
-        # more_points = np.r_[points, self.surface.points[neighbors]]
-        # more_points -= more_points.mean(axis=0)
-        # points -= points.mean(axis=0)
-        # print("3d", more_points)
 
-        # project onto plane
-        # Mt_M = np.matmul(more_points.T, more_points)
-        # u, s, vh = np.linalg.linalg.svd(Mt_M)
-        # xy = np.matmul(more_points, vh[:2].T)
-        # xy -= xy[0]
-        # points -= points[0]
         normal = self.surface.point_normals[index]
-        # perp = np.matmul(points, normal) / (np.linalg.norm(normal) ** 2)
-        # perp = perp[..., np.newaxis] * normal
-        # proj = xyz = points - perp
-        # proj -= proj[0]
 
         # rotate and project to xy plane
-
         z = np.array([0, 0, 1])
         x_ = np.cross(normal, z)
         x_ /= np.linalg.norm(x_)
         y_ = np.cross(normal, x_)
         y_ /= np.linalg.norm(y_)
+        current_basis = [x_, y_, normal, points[0]]
+        new_basis = [*np.identity(3), points[0]]
 
-        rotation_matrix, rmsd = Rotation.align_vectors([x_, y_, normal, [0, 0, 0]],
-                                                       [[1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, 0]])
-
+        rotation_matrix, rmsd = Rotation.align_vectors(current_basis, new_basis)
         xy = np.matmul(points, rotation_matrix.as_matrix())
 
-        # # xy = np.matmul(points, )
-        # print("projected", xy)
-
-        # convex hull
         hull = ConvexHull(xy[1:, :2])
         return hull.volume
-        # vor = Voronoi(xy[:, :2])
-        # headgroup_cell_int = vor.point_region[0]
-        # headgroup_cell = vor.regions[headgroup_cell_int]
-        # print(headgroup_cell)
-        # print(np.array([vor.vertices[x] for x in headgroup_cell]))
-        # x, y = np.array([vor.vertices[x] for x in headgroup_cell]).T
-        # area = np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:])
-        # area += (x[-1] * y[0] - y[-1] * x[0])
-        # lipid_area = 0.5 * np.abs(area)
-        # return lipid_area
 
     def minimum_indices(self, indices):
         return self.augmented_indices[indices]
