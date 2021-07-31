@@ -115,7 +115,6 @@ class SpectralClusteringMethod(GroupingMethod):
         box = self.get_box()
         
         coordinates = get_centers_by_residue(self.headgroups, box=box)
-
         orientations = get_orientations(self.headgroups,
                                         tailgroups=self.tailgroups,
                                         box=box, normalize=True,

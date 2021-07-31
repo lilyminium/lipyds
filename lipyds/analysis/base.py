@@ -364,6 +364,8 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
                  pbc: bool = True, update_leaflet_step: int = 1,
                  normal_axis=[0, 0, 1],
                  cutoff_other: float = 5,
+                 augment_bilayer: bool = True,
+                 augment_max: int = 1000,
                  **kwargs):
 
         super().__init__(universe, select=select,
@@ -376,6 +378,19 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         self.cutoff_other = cutoff_other
         self.normal_axis = np.asarray(normal_axis)
         self.n_bilayers = self.leafletfinder.n_leaflets // 2
+        self.augment_max = augment_max
+        if augment_bilayer:
+            self._augment = self._pad_bilayer_coordinates
+        else:
+            self._augment = lambda x, y: y
+
+    def _pad_bilayer_coordinates(self, index, coordinates):
+        if coordinates.shape[0] >= self.augment_max:
+            return coordinates
+        atoms = self.leafletfinder.leaflet_atoms[index]
+        padded = get_centers_by_residue(atoms, box=self.box)
+        combined = np.r_[coordinates, padded][:self.augment_max]
+        return combined
 
     def construct_bilayers(self):
         other_coordinates = self.other.positions
@@ -385,9 +400,12 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         for i in range(0, n_leaflets, 2):
 
             lower = self.leaflet_point_coordinates[i + 1]
+            lower = self._augment(i + 1, lower)
             lower_indices = self.leaflet_indices[i + 1]
             upper = self.leaflet_point_coordinates[i]
             upper_indices = self.leaflet_indices[i]
+            upper = self._augment(i, upper)
+
             bilayer = Bilayer(lower_coordinates=lower,
                               upper_coordinates=upper,
                               other_coordinates=other_coordinates,

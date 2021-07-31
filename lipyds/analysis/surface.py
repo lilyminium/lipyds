@@ -20,7 +20,10 @@ class Surface:
 
         points = np.asarray(points)
         n_neighbors, n_augmented = 0, 0
-        self.n_points = len(points)
+        if analysis_indices is not None:
+            self.n_points = len(analysis_indices)
+        else:
+            self.n_points = len(points)
 
         if other_points is not None and len(other_points):
             pairs = mdadist.capped_distance(points, other_points,
@@ -53,6 +56,7 @@ class Surface:
         self.augmented_indices = augmented_indices[not_other]
 
         pvutils.compute_surface_normals(self.surface, global_normal=normal)
+        self.points = self.surface.points[:self.n_points]
         self.point_normals = self.surface.point_normals[:self.n_points]
         self.faces = self.surface.faces.reshape((-1, 4))[:, 1:]
         edges = [self.faces[:, :2], self.faces[:, ::2], self.faces[:, 1:]]
@@ -60,9 +64,6 @@ class Surface:
         self.cell_centers = self.surface.cell_centers()
         self.kdtree = KDTree(self.surface.points)
 
-    @property
-    def points(self):
-        return self.surface.points[:self.n_points]
 
     def ray_trace(self, *args, **kwargs):
         return self.surface.ray_trace(*args, **kwargs)
@@ -171,7 +172,8 @@ class Bilayer:
         points = []
 
         def compute_midpoints(target, reference, operator):
-            dist = target.compute_distance_to_surface(reference)
+            # dist = target.compute_distance_to_surface(reference)
+            dist, _ = reference.kdtree.query(target.points)
             for pt, normal, d in zip(target.points, target.point_normals, dist):
                 if np.dot(normal, [0, 0, 1]) < 0:
                     normal = -normal

@@ -4,6 +4,9 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
+cdef extern from "math.h":
+    bint isnan(double x)
+
 cdef extern from "pbcutils.h":
     ctypedef float coordinate[3]
     void _mean_unwrap_around_first_ortho(coordinate *coords, int numcoords, long *resindices, float *box, coordinate *output)
@@ -121,7 +124,6 @@ def mean_unwrap_around_first(np.ndarray coordinates, np.ndarray resindices,
     output = np.asarray(output)
 
     for i in range(n_coordinates):
-        for j in range(3):
-            if output[i][j] == np.nan:
-                return output[:i]
+        if np.isnan(output[i][0]):
+            return output[:i]
     return output
