@@ -133,15 +133,6 @@ class LeafletAnalysisBase(AnalysisBase):
                               for x in self.unique_ids}
 
         # set up leafletfinder
-        self._setup_leafletfinder(leafletfinder, leaflet_kwargs)
-        self._outside = self.leafletfinder.get_first_outside_atoms(self.residues)
-        self._set_indexing_arrays()
-
-        # # placeholder leaflet values
-        self.residue_leaflets = np.full(self.n_residues, -1, dtype=int)
-
-    def _setup_leafletfinder(self, leafletfinder: Optional[LeafletFinder] = None,
-                             leaflet_kwargs: Dict[str, Any] = {}):
         if leafletfinder is None:
             leaflet_kwargs = dict(**leaflet_kwargs)  # copy
             if "select" not in leaflet_kwargs:
@@ -152,7 +143,8 @@ class LeafletAnalysisBase(AnalysisBase):
         self.leafletfinder = leafletfinder
         self.n_leaflets = self.leafletfinder.n_leaflets
 
-    def _set_indexing_arrays(self):
+        # set up outside stuff
+        self._outside = self.leafletfinder.get_first_outside_atoms(self.residues)
         _in_dict = get_index_dict(self.leafletfinder.residues.resindices,
                                   self.residues.resindices)
         self._inside_ix = np.array(list(_in_dict.keys()), dtype=int)
@@ -160,6 +152,9 @@ class LeafletAnalysisBase(AnalysisBase):
         _out_dict = get_index_dict(self._outside.residues.resindices,
                                    self.residues.resindices)
         self._outside_ix = np.array(list(_out_dict.keys()), dtype=int)
+
+        # # placeholder leaflet values
+        self.residue_leaflets = np.full(self.n_residues, -1, dtype=int)
 
     def _update_leaflets(self):
         self._cache = {}
