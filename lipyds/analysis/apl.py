@@ -44,6 +44,8 @@ class AreaPerLipid(BilayerAnalysisBase):
         Passed to :class:`~lipyds.analysis.base.BilayerAnalysisBase`
     """
 
+    units = {"Areas": "Å^2"}
+
     def _prepare(self):
         self.results.areas_by_leaflet = self._nan_array_by_leaflet()
 

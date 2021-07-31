@@ -318,7 +318,8 @@ class LeafletAnalysisBase(AnalysisBase):
         attrnames = []
         for k, v in self.results.items():
             if k.endswith("_by_attr"):
-                base = k[:-8]
+                base = [x.capitalize() for x in k[:-8].split("_")]
+                base = " ".join(base)
                 for attrname, array in v.items():
                     count = (~np.isnan(array)).sum(axis=(1, 2))
                     mean = np.nanmean(array, axis=(1, 2))
@@ -341,6 +342,7 @@ class LeafletAnalysisBase(AnalysisBase):
         means = np.concatenate(means)
         stds = np.concatenate(stds)
         variances = np.concatenate(variances)
+        units = [self.units.get(x, "") for x in propnames]
 
         dct = {"Leaflet": leaflets,
                "Mean": means,
@@ -348,7 +350,8 @@ class LeafletAnalysisBase(AnalysisBase):
                "Variance": variances,
                "Count": counts,
                "Label": attrnames,
-               "Property": propnames}
+               "Property": propnames,
+               "Unit": units}
 
         return pd.DataFrame(dct)
 
