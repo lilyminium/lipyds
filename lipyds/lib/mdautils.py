@@ -7,7 +7,7 @@ from MDAnalysis.lib.distances import capped_distance
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.lib.mdamath import norm
 
-from .cutils import unwrap_around, mean_unwrap_around, calc_cosine_similarity
+from .cutils import unwrap_around, mean_unwrap_around, calc_cosine_similarity, get_centers_by_resindices, get_centers_around_first_by_resindices
 
 
 def get_centers_by_residue(selection: AtomGroup,
@@ -23,11 +23,24 @@ def get_centers_by_residue(selection: AtomGroup,
     """
     if box is None:
         return selection.center(None, compound='residues', pbc=False)
-    splix = np.where(np.ediff1d(selection.resindices))[0]+1
-    sel = np.split(selection.positions, splix)
     if centers is None:
-        centers = [x[0] for x in sel]
-    unwrapped = np.array([mean_unwrap_around(x, c, box) for x, c in zip(sel, centers)])
+        return get_centers_around_first_by_resindices(selection.positions, selection.resindices, box)
+    # splix = np.where(np.ediff1d(selection.resindices))[0]+1
+    # sel = np.split(selection.positions, splix)
+    # if centers is None:
+    #     centers = [x[0] for x in sel]
+    # n_points = len(sel)
+    centers = np.asarray(centers)
+    return get_centers_by_resindices(selection.positions, centers, selection.resindices, box)
+    # unwrapped = np.full((n_points, 3), np.nan)
+    # for i in range(n_points):
+    #     x = sel[i]
+    #     # print(x)
+    #     if len(x) == 1:
+    #         unwrapped[i] = x[0]
+    #     else:
+    #         unwrapped[i] = mean_unwrap_around(x, centers[i], box)
+    # unwrapped = np.array([mean_unwrap_around(x, c, box) for x, c in zip(sel, centers)])
     return unwrapped
 
 
@@ -80,7 +93,7 @@ def get_distances_with_projection(coordinates: ArrayLike,
         neigh_ = coordinates[js].copy()
 
         if box is not None:
-            unwrap_around(neigh_, i_coord, box[:3])
+            unwrap_around(neigh_, i_coord, box)
         neigh_ -= i_coord
 
         vec = orientations[[i]]

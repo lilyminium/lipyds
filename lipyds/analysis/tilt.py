@@ -12,7 +12,7 @@ class LipidTilt(BilayerAnalysisBase):
         if select_end is None:
             self.ends = self.residues.atoms - self.selection
         else:
-            self.ends = universe.select_atoms(select_end)
+            self.ends = self.universe.select_atoms(select_end)
 
     def _prepare(self):
         self.results.cosine_similarity_by_leaflet = self._nan_array_by_leaflet()
