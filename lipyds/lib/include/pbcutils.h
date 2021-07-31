@@ -100,7 +100,7 @@ void minimum_image_triclinic(double *dx, float *box)
     dx[2] = dx_min[2];
 }
 
-static void box_to_triclinic_vectors(float *box, float *triclinic_vectors)
+static void _box_to_triclinic_vectors(float *box, float *triclinic_vectors)
 {
     /*
     *   /  a_x   0    0   \                 /  0    1    2  \
@@ -304,13 +304,13 @@ static void _mean_unwrap_around_centers_triclinic(coordinate *coords,
                                                   float *box,
                                                   coordinate *output)
 {
-    int i, i_coord, n_index;
+    int i_coord, n_index;
     int i_center = 0;
     int start_index = 0;
     long rix = resindices[0];
     float triclinic_box[9];
 
-    box_to_triclinic_vectors(box, triclinic_box);
+    _box_to_triclinic_vectors(box, triclinic_box);
 
     for (i_coord = 1; i_coord < numcoords; i_coord++)
     {
@@ -384,13 +384,13 @@ static void _mean_unwrap_around_first_triclinic(coordinate *coords,
                                                 float *box,
                                                 coordinate *output)
 {
-    int i, i_coord, n_index;
+    int i_coord, n_index;
     int i_center = 0;
     int start_index = 0;
     long rix = resindices[0];
     float triclinic_box[9];
 
-    box_to_triclinic_vectors(box, triclinic_box);
+    _box_to_triclinic_vectors(box, triclinic_box);
     for (i_coord = 1; i_coord < numcoords; i_coord++)
     {
         if (resindices[i_coord] != rix)
@@ -492,7 +492,7 @@ static void _calc_cosine_similarity(coordinate a,
                                     int n_bs,
                                     double *cosines)
 {
-    int i, j;
+    int i;
     double norm_b, norm_ab;
     double norm_a = norm(a);
     for (i = 0; i < n_bs; i++)
@@ -560,7 +560,6 @@ static void _single_project_distances_nobox(coordinate *coordinates,
                                             float angle_factor,
                                             double *distances)
 {
-    int i, j;
     coordinate wrapped[n_neighbors];
 
     _copy_coordinates(coordinates, neighbor_indices, n_neighbors, wrapped);
@@ -578,7 +577,6 @@ static void _single_project_distances_ortho(coordinate *coordinates,
                                             float angle_factor,
                                             double *distances)
 {
-    int i, j;
     coordinate wrapped[n_neighbors];
     coordinate unwrapped[n_neighbors];
 
@@ -598,7 +596,6 @@ static void _single_project_distances_triclinic(coordinate *coordinates,
                                                 float angle_factor,
                                                 double *distances)
 {
-    int i, j;
     coordinate wrapped[n_neighbors];
     coordinate unwrapped[n_neighbors];
 
@@ -609,14 +606,14 @@ static void _single_project_distances_triclinic(coordinate *coordinates,
                        angle_factor, distances, unwrapped);
 }
 
-static void project_distances_ortho(coordinate *coordinates,
-                                    coordinate *orientations,
-                                    int *index_as,
-                                    int *index_bs,
-                                    double *distances,
-                                    int n_pairs,
-                                    float *box,
-                                    float angle_factor)
+static void _project_distances_ortho(coordinate *coordinates,
+                                     coordinate *orientations,
+                                     int *index_as,
+                                     int *index_bs,
+                                     double *distances,
+                                     int n_pairs,
+                                     float *box,
+                                     float angle_factor)
 {
     int i, n_neighbors;
     float inverse_box[3];
@@ -652,21 +649,21 @@ static void project_distances_ortho(coordinate *coordinates,
                                     &distances[start_index]);
 }
 
-static void project_distances_triclinic(coordinate *coordinates,
-                                        coordinate *orientations,
-                                        int *index_as,
-                                        int *index_bs,
-                                        double *distances,
-                                        int n_pairs,
-                                        float *box,
-                                        float angle_factor)
+static void _project_distances_triclinic(coordinate *coordinates,
+                                         coordinate *orientations,
+                                         int *index_as,
+                                         int *index_bs,
+                                         double *distances,
+                                         int n_pairs,
+                                         float *box,
+                                         float angle_factor)
 {
     int i, n_neighbors;
     int start_index = 0;
     int center_index = index_as[0];
     float triclinic_box[9];
 
-    box_to_triclinic_vectors(box, triclinic_box);
+    _box_to_triclinic_vectors(box, triclinic_box);
 
     for (i = 1; i < n_pairs; i++)
     {
@@ -692,13 +689,13 @@ static void project_distances_triclinic(coordinate *coordinates,
                                         &distances[start_index]);
 }
 
-static void project_distances_nobox(coordinate *coordinates,
-                                    coordinate *orientations,
-                                    int *index_as,
-                                    int *index_bs,
-                                    double *distances,
-                                    int n_pairs,
-                                    float angle_factor)
+static void _project_distances_nobox(coordinate *coordinates,
+                                     coordinate *orientations,
+                                     int *index_as,
+                                     int *index_bs,
+                                     double *distances,
+                                     int n_pairs,
+                                     float angle_factor)
 {
     int i, n_neighbors;
     int start_index = 0;
