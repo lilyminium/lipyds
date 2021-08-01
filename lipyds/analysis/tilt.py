@@ -32,6 +32,12 @@ class LipidTilt(BilayerAnalysisBase):
             ix = middle.analysis_indices
             cosine = np.einsum("ij,ij->i", orientations[ix],
                                middle.point_normals)
+
+            print(orientations[ix][:10])
+            print(middle.point_normals[:10])
+            print([np.linalg.norm(x) for x in middle.point_normals[:10]])
+            print(cosine[:10])
+            print("~~")
             mask_0 = np.where(np.isin(ix, self.leaflet_indices[i]))[0]
             mask_1 = np.where(np.isin(ix, self.leaflet_indices[i + 1]))[0]
             frame[i][mask_0] = cosine[mask_0]

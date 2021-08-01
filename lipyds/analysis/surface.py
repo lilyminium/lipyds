@@ -151,6 +151,7 @@ class Bilayer:
                  lower_indices=None,
                  normal=[0, 0, 1], box=None, cutoff=30,
                  cutoff_other=5):
+        print(lower_coordinates.shape)
         self.box = box
         self.cutoff = cutoff
         self.cutoff_other = cutoff_other

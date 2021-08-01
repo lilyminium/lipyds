@@ -159,7 +159,7 @@ class LeafletAnalysisBase(AnalysisBase):
     def _update_leaflets(self):
         self._cache = {}
         self.leafletfinder.run()
-        self._set_leaflets_with_outside()
+        
 
     def _set_leaflets_with_outside(self):
         leaflets = np.full(self.n_residues, -1, dtype=int)
@@ -255,6 +255,7 @@ class LeafletAnalysisBase(AnalysisBase):
             self.times[i] = ts.time
             if not i % self.update_leaflet_step:
                 self._update_leaflets()
+            self._set_leaflets_with_outside()
             self._wrapped_single_frame()
         logger.info("Finishing up")
         self._conclude()
@@ -368,7 +369,7 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
                  normal_axis=[0, 0, 1],
                  cutoff_other: float = 5,
                  augment_bilayer: bool = True,
-                 augment_max: int = 1000,
+                 augment_max: int = 2000,
                  **kwargs):
 
         super().__init__(universe, select=select,

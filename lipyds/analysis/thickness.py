@@ -35,9 +35,7 @@ class MembraneThickness(BilayerAnalysisBase):
             mask = ~np.isnan(thickness)
             xy = bilayer.middle.points[:, self._axes]
             interpolator = self.interpolator(xy[mask], thickness[mask])
-            print(xy[mask], thickness[mask])
             interpolated = interpolator(*self.xy)
-            print(interpolated)
             self.results.interpolated_thicknesses[i, ..., frame] = interpolated
             self.results.thicknesses[i].append(thickness)
 
