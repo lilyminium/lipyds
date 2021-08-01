@@ -6,24 +6,31 @@ from scipy.spatial import ConvexHull, KDTree
 from scipy.spatial.transform import Rotation
 import pyvista as pv
 
-from ..lib import pvutils
+from ..lib import pvutils, mdautils
+from ..lib.cutils import calc_cosine_similarity
 
 
 class Surface:
 
     def __init__(self, points, other_points=None,
                  cutoff_other=5,
-                 box=None, cutoff=30, normal=[0, 0, 1],
+                 box=None, cutoff=20, normal=[0, 0, 1],
                  analysis_indices=None,):
+
+        normal = np.asarray(normal)
         self.analysis_indices = analysis_indices
         self.box = box
 
         points = np.asarray(points)
         n_neighbors, n_augmented = 0, 0
+        n_points = points.shape[0]
+
+        # there may be other lipids augmenting, set self.n_points to
+        # the important ones
         if analysis_indices is not None:
             self.n_points = len(analysis_indices)
         else:
-            self.n_points = len(points)
+            self.n_points = n_points
 
         if other_points is not None and len(other_points):
             pairs = mdadist.capped_distance(points, other_points,
@@ -34,36 +41,50 @@ class Surface:
             points = np.r_[points, neighbors]
 
         augmented_indices = np.arange(len(points))
+        augmented = np.zeros((0, 3), dtype=float)
 
         if box is not None:
-            points = mdadist.apply_PBC(points, box)
-            augmented, indices = augment_coordinates(points, box, cutoff)
+            augmented, indices = mdautils.augment_coordinates(points, box, cutoff, return_indices=True)
+
             augmented_indices = np.r_[augmented_indices, indices]
             n_augmented = len(augmented)
             points = np.r_[points, augmented]
-        else:
-            augmented = np.zeros((0, 3), dtype=float)
-
-        self.point_indices = np.arange(self.n_points)
 
         cloud = pv.PolyData(points)
         surface = cloud.delaunay_2d()
+
+        # extract non-protein points
         lipids = np.ones_like(surface.points, dtype=bool)
-        lipids[np.arange(n_neighbors) + self.n_points] = False
+        lipids[np.arange(n_neighbors) + n_points] = False
         not_other = np.where(lipids)[0]
+        # first surface
+        self._original_surface = surface
+        # select non-protein stuff
         self.grid = surface.extract_points(not_other)
+        # generate a new surface
         self.surface = self.grid.extract_surface()
+        pvutils.compute_surface_normals(self.surface, global_normal=normal)
+        # generating a new surface reorders the points!
+        self._mapping = np.argsort(self.surface.point_arrays["vtkOriginalPointIds"])
+        original_points = self.surface.point_arrays["vtkOriginalPointIds"][self._mapping]
+        self._points = self.surface.points[self._mapping]
+        self._point_normals = self.surface.point_normals[self._mapping]
+        new_n_points = np.where(original_points >= self.n_points)[0]
+        if len(new_n_points):
+            self.n_points = new_n_points[0]
+
+        is_origin = np.zeros(self.surface.n_points)
+        is_origin[:self.n_points] = 1
+        self.surface.point_arrays["Origin"] = is_origin[self._mapping]
         self.augmented_indices = augmented_indices[not_other]
 
-        pvutils.compute_surface_normals(self.surface, global_normal=normal)
-        self.points = self.surface.points[:self.n_points]
-        self.point_normals = self.surface.point_normals[:self.n_points]
+        self.points = self._points[:self.n_points]
+        self.point_normals = self._point_normals[:self.n_points]
         self.faces = self.surface.faces.reshape((-1, 4))[:, 1:]
         edges = [self.faces[:, :2], self.faces[:, ::2], self.faces[:, 1:]]
         self.edges = np.unique(np.vstack(edges), axis=0)
         self.cell_centers = self.surface.cell_centers()
         self.kdtree = KDTree(self.surface.points)
-
 
     def ray_trace(self, *args, **kwargs):
         return self.surface.ray_trace(*args, **kwargs)
@@ -96,7 +117,7 @@ class Surface:
         points = np.r_[[self.surface.points[index]], face_centers]
         points -= points[0]
 
-        normal = self.surface.point_normals[index]
+        normal = self._point_normals[index]
 
         # rotate and project to xy plane
         z = np.array([0, 0, 1])
@@ -128,7 +149,7 @@ class Surface:
 
     def get_nearest_local_normals(self, coordinates):
         points = self.get_nearest_points(coordinates)
-        return self.surface.point_normals[points]
+        return self._point_normals[points]
 
     def compute_all_vertex_areas(self, include_outside=False):
         if include_outside:
@@ -151,7 +172,6 @@ class Bilayer:
                  lower_indices=None,
                  normal=[0, 0, 1], box=None, cutoff=30,
                  cutoff_other=5):
-        print(lower_coordinates.shape)
         self.box = box
         self.cutoff = cutoff
         self.cutoff_other = cutoff_other
@@ -173,8 +193,8 @@ class Bilayer:
         points = []
 
         def compute_midpoints(target, reference, operator):
-            # dist = target.compute_distance_to_surface(reference)
-            dist, _ = reference.kdtree.query(target.points)
+            dist = target.compute_distance_to_surface(reference)
+            # dist, _ = reference.kdtree.query(target.points)
             for pt, normal, d in zip(target.points, target.point_normals, dist):
                 if np.dot(normal, [0, 0, 1]) < 0:
                     normal = -normal

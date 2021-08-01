@@ -13,12 +13,12 @@ typedef float coordinate[3];
 #define USED_OPENMP 0
 #endif
 
-inline double norm(coordinate a)
+inline double norm(float *a)
 {
     return a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
 }
 
-inline double dot(coordinate a, coordinate b)
+inline double dot(float *a, float *b)
 {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
@@ -171,9 +171,9 @@ static void _box_to_triclinic_vectors(float *box, float *triclinic_vectors)
 }
 
 static void _single_mean_unwrap_around_ortho(coordinate *coords, int numcoords,
-                                             coordinate center,
+                                             float *center,
                                              float *box, float *inverse_box,
-                                             coordinate output)
+                                             float *output)
 {
     int i, j;
     double displacement[3];
@@ -416,7 +416,7 @@ static void _mean_unwrap_around_first_triclinic(coordinate *coords,
 }
 
 static void _single_unwrap_around_ortho(coordinate *coords, int numcoords,
-                                        coordinate center,
+                                        float *center,
                                         float *box, float *inverse_box,
                                         coordinate *output)
 {
@@ -429,7 +429,7 @@ static void _single_unwrap_around_ortho(coordinate *coords, int numcoords,
     {
         unit_image[i] = center[i];
     }
-    minimum_image_ortho(unit_image, box, inverse_box);
+    // minimum_image_ortho(unit_image, box, inverse_box);
 
     for (i = 0; i < 3; i++)
     {
@@ -440,18 +440,20 @@ static void _single_unwrap_around_ortho(coordinate *coords, int numcoords,
     {
         for (i = 0; i < 3; i++)
         {
+            output[j][i] = 42;
             vector[i] = coords[j][i] - unit_image[i];
         }
         minimum_image_ortho(vector, box, inverse_box);
         for (i = 0; i < 3; i++)
         {
-            output[j][i] = unit_image[i] + displacement[i] + vector[i];
+            output[j][i] = unit_image[i] + vector[i]; // + displacement[i];
         }
     }
 }
 
-static void _single_unwrap_around_triclinic(coordinate *coords, int numcoords,
-                                            coordinate center,
+static void _single_unwrap_around_triclinic(coordinate *coords,
+                                            int numcoords,
+                                            float *center,
                                             float *triclinic_box,
                                             coordinate *output)
 {
@@ -464,7 +466,7 @@ static void _single_unwrap_around_triclinic(coordinate *coords, int numcoords,
     {
         unit_image[i] = center[i];
     }
-    minimum_image_triclinic(unit_image, triclinic_box);
+    // minimum_image_triclinic(unit_image, triclinic_box);
 
     for (i = 0; i < 3; i++)
     {
@@ -480,14 +482,14 @@ static void _single_unwrap_around_triclinic(coordinate *coords, int numcoords,
         minimum_image_triclinic(vector, triclinic_box);
         for (i = 0; i < 3; i++)
         {
-            output[j][i] = unit_image[i] + displacement[i] + vector[i];
+            output[j][i] = unit_image[i] + vector[i]; // + displacement[i];
         }
     }
 }
 
 #endif
 
-static void _calc_cosine_similarity(coordinate a,
+static void _calc_cosine_similarity(float *a,
                                     coordinate *bs,
                                     int n_bs,
                                     double *cosines)
@@ -723,4 +725,35 @@ static void _project_distances_nobox(coordinate *coordinates,
                                     &index_bs[start_index], n_neighbors,
                                     angle_factor,
                                     &distances[start_index]);
+}
+
+static void _unwrap_around_ortho(coordinate *coords,
+                                 int numcoords,
+                                 float *center,
+                                 float *box,
+                                 coordinate *output)
+{
+    int i;
+    float inverse_box[3];
+
+    for (i = 0; i < 3; i++)
+    {
+        inverse_box[i] = 1 / box[i];
+    }
+    _single_unwrap_around_ortho(coords, numcoords, center,
+                                box, inverse_box, output);
+}
+
+static void _unwrap_around_triclinic(coordinate *coords,
+                                     int numcoords,
+                                     float *center,
+                                     float *box,
+                                     coordinate *output)
+{
+    int i;
+    float triclinic_box[9];
+
+    _box_to_triclinic_vectors(box, triclinic_box);
+    _single_unwrap_around_triclinic(coords, numcoords, center,
+                                    triclinic_box, output);
 }

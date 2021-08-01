@@ -8,7 +8,7 @@ from ..lib import mdautils
 class LipidTilt(BilayerAnalysisBase):
 
     units = {"Tilts": "°",
-             "Acute Tilts": "°",}
+             "Acute Tilts": "°", }
 
     def __init__(self, universe, *args, select_end=None, **kwargs):
         super().__init__(universe, *args, **kwargs)
@@ -33,16 +33,10 @@ class LipidTilt(BilayerAnalysisBase):
             cosine = np.einsum("ij,ij->i", orientations[ix],
                                middle.point_normals)
 
-            print(orientations[ix][:10])
-            print(middle.point_normals[:10])
-            print([np.linalg.norm(x) for x in middle.point_normals[:10]])
-            print(cosine[:10])
-            print("~~")
             mask_0 = np.where(np.isin(ix, self.leaflet_indices[i]))[0]
             mask_1 = np.where(np.isin(ix, self.leaflet_indices[i + 1]))[0]
             frame[i][mask_0] = cosine[mask_0]
             frame[i + 1][mask_1] = cosine[mask_1]
-
 
     @set_results_mean_and_by_attr("tilts_by_leaflet",
                                   "acute_tilts_by_leaflet", pre=False)

@@ -19,6 +19,7 @@ from MDAnalysis.analysis.distances import capped_distance
 
 from .grouping import GraphMethod, SpectralClusteringMethod
 from ..lib.utils import cached_property
+from ..lib import mdautils
 
 
 class LeafletFinder:
@@ -188,7 +189,7 @@ class LeafletFinder:
     @cached_property
     def residue_leaflets(self):
         arr = np.full(self.n_residues, -1, dtype=int)
-        for leaflet, residues in enumerate(self._output_leaflet_indices):
+        for leaflet, residues in enumerate(self.leaflet_indices):
             for residue_index in residues:
                 arr[residue_index] = leaflet
         return arr
@@ -222,8 +223,11 @@ class LeafletFinder:
                 for x in self.leaflet_indices_by_size]
 
     def _argsort_by_normal(self, groups):
-        vals = [np.mean(x.positions[:, self._normal_axis]) for x in groups]
-        return np.argsort(vals)[::-1]
+        positions = [x.positions for x in groups]
+        unwrapped = [mdautils.unwrap_coordinates(x, x[0], self.box) for x in positions]
+        vals = [np.mean(x[:, self._normal_axis]) for x in unwrapped]
+        args = np.argsort(vals)[::-1]
+        return args
 
     @cached_property
     def _output_by_normal(self):

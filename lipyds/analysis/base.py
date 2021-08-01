@@ -11,7 +11,7 @@ from MDAnalysis.analysis.base import AnalysisBase, ProgressBar
 from MDAnalysis.analysis.distances import capped_distance
 
 from ..leafletfinder import LeafletFinder
-from ..lib.mdautils import get_centers_by_residue
+from ..lib.mdautils import get_centers_by_residue, unwrap_coordinates
 from ..lib.utils import cached_property, get_index_dict
 from .surface import Bilayer
 
@@ -159,7 +159,6 @@ class LeafletAnalysisBase(AnalysisBase):
     def _update_leaflets(self):
         self._cache = {}
         self.leafletfinder.run()
-        
 
     def _set_leaflets_with_outside(self):
         leaflets = np.full(self.n_residues, -1, dtype=int)
@@ -190,9 +189,14 @@ class LeafletAnalysisBase(AnalysisBase):
                 for ix in self.leaflet_indices]
 
     @cached_property
+    def leaflet_coordinates(self):
+        # leaflets = [unwrap_coordinates(x, center=x[0], box=self.box) for x in self.leaflet_point_coordinates]
+        return [unwrap_coordinates(x, center=leaflets[0][0], box=self.box) for x in self.leaflet_point_coordinates]
+
+    @cached_property
     def leaflet_point_coordinates(self):
         if self.point_coordinates == "average":
-            return [get_centers_by_residue(ag)
+            return [get_centers_by_residue(ag, box=self.box)
                     for ag in self.leaflet_atomgroups]
         all_coordinates = []
         for i, ix in enumerate(self.leaflet_indices):

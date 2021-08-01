@@ -4,6 +4,7 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
+
 cdef extern from "math.h":
     bint isnan(double x)
 
@@ -17,7 +18,9 @@ cdef extern from "pbcutils.h":
     void _project_distances_nobox(coordinate *coordinates, coordinate *orientations, int *index_as, int *index_bs, double *distances, int n_pairs, float angle_factor)
     void _project_distances_triclinic(coordinate *coordinates, coordinate *orientations, int *index_as, int *index_bs, double *distances, int n_pairs, float *box, float angle_factor)
     void _project_distances_ortho(coordinate *coordinates, coordinate *orientations, int *index_as, int *index_bs, double *distances, int n_pairs, float *box, float angle_factor)
-
+    void _unwrap_around_ortho(coordinate *coords, int numcoords, coordinate center, float *box, coordinate *output)
+    void _unwrap_around_triclinic(coordinate *coords, int numcoords, coordinate center, float *box, coordinate *output)
+    void _calc_cosine_similarity(coordinate a, coordinate *bs, int n_bs, double *cosines)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -55,6 +58,7 @@ def project_distances(np.ndarray coordinates, np.ndarray orientations,
                                      <double*> distances.data,
                                      n_pairs, &isbox[0],
                                      angle_factor)
+    return distances
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -127,3 +131,43 @@ def mean_unwrap_around_first(np.ndarray coordinates, np.ndarray resindices,
         if np.isnan(output[i][0]):
             return output[:i]
     return output
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def unwrap_around(np.ndarray coordinates, np.ndarray center,
+                  np.ndarray box, np.ndarray output):
+    cdef int n_coordinates = coordinates.shape[0]
+
+    for i in range(3, 6):
+        if box[i] != 90.0:
+            _unwrap_around_triclinic(<coordinate*> coordinates.data, n_coordinates,
+                                     <coordinate> center.data,
+                                     <float*> box.data, <coordinate*> output.data)
+            return
+    _unwrap_around_ortho(<coordinate*> coordinates.data, n_coordinates, <coordinate> center.data,
+                         <float*> box.data, <coordinate*> output.data)
+    return output
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def calc_angle(float[:] a, float[:] b):
+    cdef double norm_a, norm_b, norm_ab, ab
+
+    norm_a = a[0] * a[0] + a[1] * a[1] + a[2] * a[2]
+    norm_b = b[0] * b[0] + b[1] * b[1] + b[2] * b[2]
+    norm_ab = norm_a * norm_b
+    ab = a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    if norm_ab > 0:
+        return ab / norm_ab
+    return 1
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def calc_cosine_similarity(np.ndarray vector_a, np.ndarray vectors):
+    cdef int n_bs = vectors.shape[0]
+    cdef np.ndarray output = np.empty(n_bs)
+    _calc_cosine_similarity(<coordinate> vector_a.data,
+                            <coordinate*> vectors.data,
+                            n_bs, <double*> output.data)
+    return np.asarray(output)
