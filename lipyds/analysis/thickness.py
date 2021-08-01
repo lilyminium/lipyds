@@ -6,6 +6,19 @@ from ..lib import utils
 
 
 class MembraneThickness(BilayerAnalysisBase):
+    r"""Calculate the thickness of one or more bilayers.
+
+    This uses the local normals of each point in the "middle"
+    surface. The distance along the local normal to the upper and lower
+    leaflets is calculated for the total thickness. If the the local normal
+    does not intersect with either leaflet, the value for that point is
+    double the other leaflet, or np.nan if the normal does not intersect with
+    either leaflet.
+
+    Values are interpolated along a user-specified mesh grid for
+    smooth results.
+
+    """
 
     def __init__(self, *args, grid_bounds="max", axes=("x", "y"),
                  bin_size=2,
@@ -21,6 +34,7 @@ class MembraneThickness(BilayerAnalysisBase):
 
     def _prepare(self):
         self._setup_grid()
+        self._setup_axes()
 
         self.results.thicknesses = []
         for n in range(self.n_bilayers):
@@ -36,7 +50,7 @@ class MembraneThickness(BilayerAnalysisBase):
             xy = bilayer.middle.points[:, self._axes]
             interpolator = self.interpolator(xy[mask], thickness[mask])
             interpolated = interpolator(*self.xy)
-            self.results.interpolated_thicknesses[i, ..., frame] = interpolated
+            self.results.interpolated_thicknesses[i, ..., frame] = interpolated.T
             self.results.thicknesses[i].append(thickness)
 
     def _conclude(self):
@@ -56,7 +70,10 @@ class MembraneThickness(BilayerAnalysisBase):
             operator = np.mean
 
         cell = [self.universe.dimensions for ts in self.universe.trajectory]
-        x, y = operator(cell, axis=0)[self._axes] + self.bin_size
+        self.grid_bounds = operator(cell, axis=0)[self._axes] + self.bin_size
+
+    def _setup_axes(self):
+        x, y = self.grid_bounds
         self.x_axis = np.arange(0, x, self.bin_size, dtype=float)
         self.n_x = len(self.x_axis)
         self.y_axis = np.arange(0, y, self.bin_size, dtype=float)
