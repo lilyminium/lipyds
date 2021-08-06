@@ -94,7 +94,7 @@ class Surface:
         # annoyingly, the points get reordered
         _mapping = np.argsort(surface.point_arrays["vtkOriginalPointIds"])
         original_points = surface.point_arrays["vtkOriginalPointIds"][_mapping]
-        new_to_original = {i: x for i, x in enumerate(_mapping)}
+        new_to_original = {x: i for i, x in enumerate(_mapping)}
         new_points = surface.points[_mapping]
         faces = surface.faces.reshape((-1, 4))
         for row in faces[:, 1:]:
@@ -114,7 +114,6 @@ class Surface:
                                     include_outside=False):
         if include_outside:
             obj = self.surface
-            reference = reference.surface
         else:
             obj = self
         return pvutils.compute_distances_between_surfaces(obj, reference,

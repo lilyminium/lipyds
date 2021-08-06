@@ -54,20 +54,16 @@ class MembraneThickness(BilayerAnalysisBase):
             interpolated = interpolator(*self.xy)
             self.results.interpolated_thicknesses[i, ..., frame] = interpolated.T
             self.results.thicknesses[i].append(thickness)
-            print(np.nanmean(thickness), np.nanstd(thickness))
             self.results.points[i].append(points)
 
     def _conclude(self):
-        if self.n_frames > 1:
-            self.results.thickness_mean = [np.nanmean(x) for x in self.results.thicknesses]
-            self.results.thickness_std = [np.nanstd(x) for x in self.results.thicknesses]
-            self.results.mean_interpolated = np.nanmean(self.results.interpolated_thicknesses, axis=-1)
-            self.results.sd_interpolated = np.nanstd(self.results.interpolated_thicknesses, axis=-1)
-        else:
-            self.results.thickness_mean = self.results.thicknesses
-            self.results.thickness_std = np.zeros_like(self.results.thickness_mean)
-            self.results.mean_interpolated = self.results.interpolated_thicknesses[..., 0]
-            self.results.sd_interpolated = np.zeros_like(self.results.mean_interpolated)
+        self.results.thickness_mean = np.full((self.n_bilayers, self.n_frames), np.nan)
+        self.results.thickness_std = np.full((self.n_bilayers, self.n_frames), np.nan)
+        for i, bilayer in enumerate(self.results.thicknesses):
+            self.results.thickness_mean[i] = [np.nanmean(x) for x in bilayer]
+            self.results.thickness_std[i] = [np.nanstd(x) for x in bilayer]
+        self.results.mean_interpolated = np.nanmean(self.results.interpolated_thicknesses, axis=-1)
+        self.results.sd_interpolated = np.nanstd(self.results.interpolated_thicknesses, axis=-1)
 
 
     def _setup_grid(self):

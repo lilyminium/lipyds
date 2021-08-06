@@ -194,8 +194,7 @@ class LeafletAnalysisBase(AnalysisBase):
         unwrapped = [unwrap_coordinates(x, center=self.leaflet_point_coordinates[0][0],
                      box=self.box)
                      for x in self.leaflet_point_coordinates]
-        center = np.concatenate(unwrapped).mean(axis=0)
-        return [x - center for x in unwrapped]
+        return unwrapped
 
     @cached_property
     def leaflet_point_coordinates(self):
