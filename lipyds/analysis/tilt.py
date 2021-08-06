@@ -26,14 +26,12 @@ class LipidTilt(BilayerAnalysisBase):
                                                  tailgroups=self.ends,
                                                  box=self.box,
                                                  normalize=True)
-        for i in range(self.n_leaflets):
+        for i, indices in enumerate(self.leaflet_indices):
             middle = self.bilayers[i // 2].middle
-            leaflet = self.leaflet_coordinates[i]
-            indices = self.leaflet_indices[i]
-            # nearest normal
-            distance, point_indices = middle.kdtree.query(leaflet)
+            point_indices = self.get_nearest_indices(i)
             normals = middle.surface.point_normals[point_indices]
-            frame[i] = np.einsum("ij,ij->i", orientations[indices], normals)
+            cosine = np.einsum("ij,ij->i", orientations[indices], normals)
+            frame[i, indices] = cosine
 
 
     @set_results_mean_and_by_attr("tilts_by_leaflet",

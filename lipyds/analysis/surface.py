@@ -8,7 +8,7 @@ import pyvista as pv
 
 from ..lib import pvutils, mdautils
 from ..lib.cutils import calc_cosine_similarity
-
+from ..lib.utils import cached_property
 
 class Surface:
 
@@ -16,8 +16,8 @@ class Surface:
                  cutoff_other=5,
                  box=None, cutoff=20, normal=[0, 0, 1],
                  analysis_indices=None,):
-
-        normal = np.asarray(normal)
+        self._cache = {}
+        self.normal = np.asarray(normal)
         self.analysis_indices = analysis_indices
         self.box = box
 
@@ -40,52 +40,72 @@ class Surface:
             n_neighbors = len(neighbors)
             points = np.r_[points, neighbors]
 
-        augmented_indices = np.arange(len(points))
+        self.augmented_indices = np.arange(len(points))
         augmented = np.zeros((0, 3), dtype=float)
 
         if box is not None:
             augmented, indices = mdautils.augment_coordinates(points, box, cutoff, return_indices=True)
 
-            augmented_indices = np.r_[augmented_indices, indices]
+            self.augmented_indices = np.r_[self.augmented_indices, indices]
             n_augmented = len(augmented)
             points = np.r_[points, augmented]
 
-        cloud = pv.PolyData(points)
-        surface = cloud.delaunay_2d()
+        self._create_surface(points, n_neighbors, n_points)
 
-        # extract non-protein points
-        lipids = np.ones_like(surface.points, dtype=bool)
+    @cached_property
+    def kdtree(self):
+        return KDTree(self.surface.points)
+
+    @cached_property
+    def cell_centers(self):
+        return self.surface.cell_centers()
+
+    @cached_property
+    def points(self):
+        return self.surface.points[:self.n_points]
+
+    @cached_property
+    def point_normals(self):
+        return self.surface.point_normals[:self.n_points]
+
+    @cached_property
+    def faces(self):
+        return self.surface.faces.reshape((-1, 4))[:, 1:]
+
+    @cached_property
+    def edges(self):
+        edges = [self.faces[:, :2], self.faces[:, ::2], self.faces[:, 1:]]
+        return np.unique(np.vstack(edges), axis=0)
+
+    def _create_surface(self, points, n_neighbors, n_points):
+        # step 1: smooth delaunay
+        cloud = pv.PolyData(points)
+        self._surface1 = cloud.delaunay_2d()
+
+        # step 2: extract non-protein points
+        lipids = np.ones_like(self._surface1.points, dtype=bool)
         lipids[np.arange(n_neighbors) + n_points] = False
         not_other = np.where(lipids)[0]
-        # first surface
-        self._original_surface = surface
-        # select non-protein stuff
-        self.grid = surface.extract_points(not_other)
-        # generate a new surface
-        self.surface = self.grid.extract_surface()
-        pvutils.compute_surface_normals(self.surface, global_normal=normal)
-        # generating a new surface reorders the points!
-        self._mapping = np.argsort(self.surface.point_arrays["vtkOriginalPointIds"])
-        original_points = self.surface.point_arrays["vtkOriginalPointIds"][self._mapping]
-        self._points = self.surface.points[self._mapping]
-        self._point_normals = self.surface.point_normals[self._mapping]
-        new_n_points = np.where(original_points >= self.n_points)[0]
-        if len(new_n_points):
-            self.n_points = new_n_points[0]
-        self._inverse_mapping = np.argsort(self._mapping[:self.n_points])
+        self.augmented_indices = self.augmented_indices[not_other]
+        self._grid2 = self._surface1.extract_points(not_other)
 
-        is_origin = np.zeros(self.surface.n_points)
-        is_origin[:self.n_points] = 1
-        self.surface.point_arrays["Origin"] = is_origin[self._mapping]
-        self.augmented_indices = augmented_indices[not_other]
+        # step 3: generate new surface
+        surface = self._grid2.extract_surface()
+        # annoyingly, the points get reordered
+        _mapping = np.argsort(surface.point_arrays["vtkOriginalPointIds"])
+        original_points = surface.point_arrays["vtkOriginalPointIds"][_mapping]
+        new_to_original = {i: x for i, x in enumerate(_mapping)}
+        new_points = surface.points[_mapping]
+        faces = surface.faces.reshape((-1, 4))
+        for row in faces[:, 1:]:
+            for i, x in enumerate(row):
+                row[i] = new_to_original[x]
+        new_faces = faces.ravel()
+        # STEP 4 make the FINAL surface
+        self.surface = pv.PolyData(new_points, new_faces)
+        # calculate normals
+        pvutils.compute_surface_normals(self.surface, global_normal=self.normal)
 
-        self.points = self._points[:self.n_points]
-        self.point_normals = self._point_normals[:self.n_points]
-        self.faces = self.surface.faces.reshape((-1, 4))[:, 1:]
-        edges = [self.faces[:, :2], self.faces[:, ::2], self.faces[:, 1:]]
-        self.edges = np.unique(np.vstack(edges), axis=0)
-        self.cell_centers = self.surface.cell_centers()
-        self.kdtree = KDTree(self.surface.points)
 
     def ray_trace(self, *args, **kwargs):
         return self.surface.ray_trace(*args, **kwargs)
@@ -168,7 +188,9 @@ class Surface:
         for i in indices:
             areas[i] = self.compute_vertex_area(i)
         self.surface.point_arrays["APL"] = areas
-        return points, areas[indices]
+        if return_indices:
+            return areas[indices], indices
+        return areas[indices]
 
 
 class Bilayer:
@@ -234,11 +256,12 @@ class Bilayer:
         lower = self.middle.compute_distance_to_surface(self.lower, include_outside=include_outside)
         thickness = np.nanmean([upper, lower], axis=0) * 2
         padded = np.full(self.middle.surface.n_points, np.nan)
+        padded[:len(thickness)] = thickness
         if include_outside:
-            padded[:] = thickness
+        #     padded[:] = thickness
             points = self.middle.surface.points
         else:
-            padded[self.middle._inverse_mapping[:len(thickness)]] = thickness
+        #     padded[self.middle._inverse_mapping[:len(thickness)]] = thickness
             points = self.middle.points
         self.middle.surface.point_arrays["Thickness"] = padded
         return points, thickness

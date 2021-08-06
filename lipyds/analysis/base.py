@@ -191,7 +191,8 @@ class LeafletAnalysisBase(AnalysisBase):
     @cached_property
     def leaflet_coordinates(self):
         # leaflets = [unwrap_coordinates(x, center=x[0], box=self.box) for x in self.leaflet_point_coordinates]
-        unwrapped = [unwrap_coordinates(x, center=leaflets[0][0], box=self.box)
+        unwrapped = [unwrap_coordinates(x, center=self.leaflet_point_coordinates[0][0],
+                     box=self.box)
                      for x in self.leaflet_point_coordinates]
         center = np.concatenate(unwrapped).mean(axis=0)
         return [x - center for x in unwrapped]
@@ -405,6 +406,13 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         padded = get_centers_by_residue(atoms, box=self.box)
         combined = np.r_[coordinates, padded][:self.augment_max]
         return combined
+
+    def get_nearest_indices(self, leaflet_index):
+        middle = self.bilayers[leaflet_index // 2].middle
+        leaflet = self.leaflet_coordinates[leaflet_index]
+        _, point_indices = middle.kdtree.query(leaflet)
+        return point_indices
+    
 
     def construct_bilayers(self):
         other_coordinates = self.other.positions
