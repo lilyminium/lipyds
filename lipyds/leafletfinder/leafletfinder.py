@@ -269,6 +269,15 @@ class LeafletFinder:
                 for i in self._argsort_by_size_and_normal]
 
     @cached_property
+    def leaflet_coordinates(self):
+        by_leaflet = [mdautils.get_centers_by_residue(ag, box=self.box)
+                      for ag in self.leaflet_atoms]
+        unwrapped = [mdautils.unwrap_coordinates(x, center=by_leaflet[0][0], box=self.box)
+                     for x in by_leaflet]
+        center = np.concatenate(unwrapped).mean(axis=0)
+        return [x - center for x in unwrapped]
+
+    @cached_property
     def resindex_to_leaflet(self):
         r2l = {}
         for i, residues in enumerate(self.leaflet_residues):

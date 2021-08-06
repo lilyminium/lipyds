@@ -191,7 +191,10 @@ class LeafletAnalysisBase(AnalysisBase):
     @cached_property
     def leaflet_coordinates(self):
         # leaflets = [unwrap_coordinates(x, center=x[0], box=self.box) for x in self.leaflet_point_coordinates]
-        return [unwrap_coordinates(x, center=leaflets[0][0], box=self.box) for x in self.leaflet_point_coordinates]
+        unwrapped = [unwrap_coordinates(x, center=leaflets[0][0], box=self.box)
+                     for x in self.leaflet_point_coordinates]
+        center = np.concatenate(unwrapped).mean(axis=0)
+        return [x - center for x in unwrapped]
 
     @cached_property
     def leaflet_point_coordinates(self):
@@ -257,6 +260,7 @@ class LeafletAnalysisBase(AnalysisBase):
             self._ts = ts
             self.frames[i] = ts.frame
             self.times[i] = ts.time
+            self.leafletfinder._cache.pop("leaflet_coordinates", None)
             if not i % self.update_leaflet_step:
                 self._update_leaflets()
             self._set_leaflets_with_outside()
@@ -374,6 +378,7 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
                  cutoff_other: float = 5,
                  augment_bilayer: bool = True,
                  augment_max: int = 2000,
+                 coordinates_from_leafletfinder: bool = True,
                  **kwargs):
 
         super().__init__(universe, select=select,
@@ -387,6 +392,7 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         self.normal_axis = np.asarray(normal_axis)
         self.n_bilayers = self.leafletfinder.n_leaflets // 2
         self.augment_max = augment_max
+        self.coordinates_from_leafletfinder = coordinates_from_leafletfinder
         if augment_bilayer:
             self._augment = self._pad_bilayer_coordinates
         else:
@@ -405,12 +411,18 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         n_leaflets = len(self.leaflet_point_coordinates)
         bilayers = []
         frame = self._frame_index
+
+        if self.coordinates_from_leafletfinder:
+            coordinates = self.leafletfinder.leaflet_coordinates
+        else:
+            coordinates = self.leaflet_coordinates
+
         for i in range(0, n_leaflets, 2):
 
-            lower = self.leaflet_point_coordinates[i + 1]
+            lower = coordinates[i + 1]
             lower = self._augment(i + 1, lower)
             lower_indices = self.leaflet_indices[i + 1]
-            upper = self.leaflet_point_coordinates[i]
+            upper = coordinates[i]
             upper_indices = self.leaflet_indices[i]
             upper = self._augment(i, upper)
 

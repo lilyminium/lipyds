@@ -37,21 +37,24 @@ class MembraneThickness(BilayerAnalysisBase):
         self._setup_axes()
 
         self.results.thicknesses = []
+        self.results.points = []
         for n in range(self.n_bilayers):
             self.results.thicknesses.append([])
+            self.results.points.append([])
         shape = (self.n_bilayers, self.n_x, self.n_y, self.n_frames)
         self.results.interpolated_thicknesses = np.full(shape, np.nan)
 
     def _single_frame(self):
         frame = self._frame_index
         for i, bilayer in enumerate(self.bilayers):
-            thickness = bilayer.compute_thickness()[:bilayer.middle.n_points]
+            points, thickness = bilayer.compute_thickness()[:bilayer.middle.n_points]
             mask = ~np.isnan(thickness)
-            xy = bilayer.middle.points[:, self._axes]
+            xy = points[:, self._axes]
             interpolator = self.interpolator(xy[mask], thickness[mask])
             interpolated = interpolator(*self.xy)
             self.results.interpolated_thicknesses[i, ..., frame] = interpolated.T
             self.results.thicknesses[i].append(thickness)
+            self.results.points[i].append(points)
 
     def _conclude(self):
         self.results.thickness_mean = [np.nanmean(x) for x in self.results.thicknesses]

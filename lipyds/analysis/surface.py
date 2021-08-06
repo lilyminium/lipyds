@@ -72,6 +72,7 @@ class Surface:
         new_n_points = np.where(original_points >= self.n_points)[0]
         if len(new_n_points):
             self.n_points = new_n_points[0]
+        self._inverse_mapping = np.argsort(self._mapping[:self.n_points])
 
         is_origin = np.zeros(self.surface.n_points)
         is_origin[:self.n_points] = 1
@@ -89,7 +90,8 @@ class Surface:
     def ray_trace(self, *args, **kwargs):
         return self.surface.ray_trace(*args, **kwargs)
 
-    def compute_distance_to_surface(self, reference, include_outside=False):
+    def compute_distance_to_surface(self, reference,
+                                    include_outside=False):
         if include_outside:
             obj = self.surface
             reference = reference.surface
@@ -157,10 +159,16 @@ class Surface:
         else:
             obj = self
         areas = np.full(self.surface.n_points, np.nan)
-        for i in range(obj.n_points):
+        if include_outside:
+            indices = np.arange(self.surface.n_points)
+            points = self.surface.points
+        else:
+            indices = self._mapping[:self.n_points]
+            points = self.points
+        for i in indices:
             areas[i] = self.compute_vertex_area(i)
         self.surface.point_arrays["APL"] = areas
-        return areas[:obj.n_points]
+        return points, areas[indices]
 
 
 class Bilayer:
@@ -193,7 +201,9 @@ class Bilayer:
         points = []
 
         def compute_midpoints(target, reference, operator):
-            dist = target.compute_distance_to_surface(reference)
+            # in input order
+            dist = target.compute_distance_to_surface(reference,
+                                                      include_outside=False)
             # dist, _ = reference.kdtree.query(target.points)
             for pt, normal, d in zip(target.points, target.point_normals, dist):
                 if np.dot(normal, [0, 0, 1]) < 0:
@@ -224,6 +234,11 @@ class Bilayer:
         lower = self.middle.compute_distance_to_surface(self.lower, include_outside=include_outside)
         thickness = np.nanmean([upper, lower], axis=0) * 2
         padded = np.full(self.middle.surface.n_points, np.nan)
-        padded[:len(thickness)] = thickness
+        if include_outside:
+            padded[:] = thickness
+            points = self.middle.surface.points
+        else:
+            padded[self.middle._inverse_mapping[:len(thickness)]] = thickness
+            points = self.middle.points
         self.middle.surface.point_arrays["Thickness"] = padded
-        return thickness
+        return points, thickness
