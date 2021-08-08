@@ -2,7 +2,7 @@ import numpy as np
 from MDAnalysis.lib._augment import augment_coordinates
 from MDAnalysis.lib import distances as mdadist
 from MDAnalysis.lib import mdamath
-from scipy.spatial import ConvexHull, KDTree
+from scipy.spatial import ConvexHull, KDTree, Voronoi
 from scipy.spatial.transform import Rotation
 import pyvista as pv
 
@@ -103,6 +103,7 @@ class Surface:
         new_faces = faces.ravel()
         # STEP 4 make the FINAL surface
         self.surface = pv.PolyData(new_points, new_faces)
+        self.surface.point_arrays["vtkOriginalPointIds"] = original_points
         # calculate normals
         pvutils.compute_surface_normals(self.surface, global_normal=self.normal)
 
@@ -138,7 +139,7 @@ class Surface:
         points = np.r_[[self.surface.points[index]], face_centers]
         points -= points[0]
 
-        normal = self._point_normals[index]
+        normal = self.surface.point_normals[index]
 
         # rotate and project to xy plane
         z = np.array([0, 0, 1])
@@ -151,7 +152,18 @@ class Surface:
 
         rotation_matrix, rmsd = Rotation.align_vectors(current_basis, new_basis)
         xy = np.matmul(points, rotation_matrix.as_matrix())
+        xy -= xy[0]
 
+        # vor = Voronoi(xy[:, :2])
+        # headgroup_cell_int = vor.point_region[0]
+        # headgroup_cell = vor.regions[headgroup_cell_int]
+        # # x and y should be ordered clockwise
+        # x, y = np.array([vor.vertices[x] for x in headgroup_cell]).T
+        # area = np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:])
+        # area += (x[-1] * y[0] - y[-1] * x[0])
+        # lipid_area = 0.5 * np.abs(area)
+
+        # return lipid_area
         hull = ConvexHull(xy[1:, :2])
         return hull.volume
 
@@ -170,7 +182,7 @@ class Surface:
 
     def get_nearest_local_normals(self, coordinates):
         points = self.get_nearest_points(coordinates)
-        return self._point_normals[points]
+        return self.surface.point_normals[points]
 
     def compute_all_vertex_areas(self, include_outside=False):
         if include_outside:
@@ -179,17 +191,13 @@ class Surface:
             obj = self
         areas = np.full(self.surface.n_points, np.nan)
         if include_outside:
-            indices = np.arange(self.surface.n_points)
-            points = self.surface.points
+            n = self.surface.n_points
         else:
-            indices = self._mapping[:self.n_points]
-            points = self.points
-        for i in indices:
+            n = self.n_points
+        for i in range(n):
             areas[i] = self.compute_vertex_area(i)
         self.surface.point_arrays["APL"] = areas
-        if return_indices:
-            return areas[indices], indices
-        return areas[indices]
+        return areas[:n]
 
 
 class Bilayer:
@@ -217,6 +225,7 @@ class Bilayer:
                              cutoff_other=cutoff_other,
                              analysis_indices=lower_indices)
         self.compute_middle()
+        self.leaflets = [self.upper, self.lower]
 
     def compute_middle(self):
         points = []

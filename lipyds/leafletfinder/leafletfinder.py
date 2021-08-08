@@ -15,7 +15,7 @@ import numpy as np
 from MDAnalysis.core.universe import Universe
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.selections import get_writer
-from MDAnalysis.analysis.distances import capped_distance
+from MDAnalysis.analysis.distances import capped_distance, distance_array
 
 from .grouping import GraphMethod, SpectralClusteringMethod
 from ..lib.utils import cached_property
@@ -275,6 +275,7 @@ class LeafletFinder:
         unwrapped = [mdautils.unwrap_coordinates(x, center=by_leaflet[0][0], box=self.box)
                      for x in by_leaflet]
         center = np.concatenate(unwrapped).mean(axis=0)
+        return unwrapped
         return [x - center for x in unwrapped]
 
     @cached_property
@@ -289,9 +290,14 @@ class LeafletFinder:
                                 self._first_residue_atoms.positions,
                                 max_cutoff=self.cutoff,
                                 box=self.box, return_distances=False)
-        neighbors = self.residue_leaflets[pairs[:, 1]]
-        most_common = np.bincount(neighbors).argmax()
-        return most_common
+        if len(pairs):
+            neighbors = self.residue_leaflets[pairs[:, 1]]
+            most_common = np.bincount(neighbors).argmax()
+            return most_common
+        distances = distance_array(atom.position,
+                                   self._first_residue_atoms.positions,
+                                   box=self.box).reshape(-1)
+        return self.residue_leaflets[distances.argmin()]
 
     def assign_atoms_by_distance(self, atomgroup):
         leaflets = np.full(len(atomgroup), -1, dtype=int)

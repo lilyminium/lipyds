@@ -15,7 +15,7 @@ def compute_surface_normals(surface, global_normal=[0, 0, 1]):
 
 def compute_distances_between_surfaces(target, reference, box=None, vector_length=100):
     distances = np.full(target.n_points, np.nan)
-    for i in range(target.n_points):
+    for i, point in enumerate(target.points): #range(target.n_points):
         point = target.points[i]
         normal = target.point_normals[i]
         vector = vector_length * normal

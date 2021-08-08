@@ -32,7 +32,7 @@ def augment_coordinates(coordinates: ArrayLike,
 def unwrap_coordinates(coordinates: ArrayLike,
                        center: Optional[ArrayLike] = None,
                        box: Optional[ArrayLike] = None) -> ArrayLike:
-    coordinates = np.asarray(coordinates, dtype=np.float32)
+    coordinates = np.asarray(coordinates, dtype=np.float32).reshape((-1, 3))
     if box is None:
         return coordinates
     if center is None:

@@ -421,6 +421,8 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
 
         if self.coordinates_from_leafletfinder:
             coordinates = self.leafletfinder.leaflet_coordinates
+            lower_indices = None
+            upper_indices = None
         else:
             coordinates = self.leaflet_coordinates
 
@@ -428,10 +430,12 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
 
             lower = coordinates[i + 1]
             lower = self._augment(i + 1, lower)
-            lower_indices = self.leaflet_indices[i + 1]
             upper = coordinates[i]
-            upper_indices = self.leaflet_indices[i]
             upper = self._augment(i, upper)
+
+            if not self.coordinates_from_leafletfinder:
+                lower_indices = self.leaflet_indices[i + 1]
+                upper_indices = self.leaflet_indices[i]
 
             bilayer = Bilayer(lower_coordinates=lower,
                               upper_coordinates=upper,

@@ -1,6 +1,11 @@
+from typing import Union, Optional, Dict, Any
+from MDAnalysis.core.universe import Universe
+from MDAnalysis.core.groups import AtomGroup
+
 from scipy import interpolate as spinterp
 import numpy as np
 
+from ..leafletfinder import LeafletFinder
 from .base import BilayerAnalysisBase
 from ..lib import utils
 
@@ -20,11 +25,30 @@ class MembraneThickness(BilayerAnalysisBase):
 
     """
 
-    def __init__(self, *args, grid_bounds="max", axes=("x", "y"),
+    def __init__(self, universe: Union[AtomGroup, Universe],
+                 select: Optional[str] = "not protein",
+                 select_other: Optional[str] = "protein",
+                 leafletfinder: Optional[LeafletFinder] = None,
+                 leaflet_kwargs: Dict[str, Any] = {},
+                 group_by_attr: str = "resnames",
+                 pbc: bool = True, update_leaflet_step: int = 1,
+                 normal_axis=[0, 0, 1],
+                 cutoff_other: float = 5,
+                 grid_bounds="max", axes=("x", "y"),
                  bin_size=2,
                  interpolator=spinterp.CloughTocher2DInterpolator,
                  **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(universe=universe,
+                         select=select, select_other=select_other,
+                         leafletfinder=leafletfinder,
+                         leaflet_kwargs=leaflet_kwargs,
+                         group_by_attr=group_by_attr,
+                         pbc=pbc, update_leaflet_step=update_leaflet_step,
+                         normal_axis=normal_axis,
+                         cutoff_other=cutoff_other,
+                         augment_bilayer=False,
+                         coordinates_from_leafletfinder=False)
+
         self._axes = list(map(utils.axis_to_index, axes))
         self.bin_size = bin_size
         if not isinstance(interpolator, type):

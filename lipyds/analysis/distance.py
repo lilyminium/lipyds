@@ -21,8 +21,11 @@ class ProjectedDisplacement(BilayerAnalysisBase):
             midpoints = middle.surface.points[point_indices]
 
             coordinates = self.leaflet_coordinates[i]
-            displacement = coordinates - midpoints
-            frame[indices] = np.einsum('ij,ij->i', displacement, normals)
+            unwrapped = [mdautils.unwrap_coordinates(x, y, box=self.box)
+                         for x, y in zip(coordinates, midpoints)]
+            displacement = np.concatenate(unwrapped) - midpoints
+
+            frame[i, indices] = np.einsum('ij,ij->i', displacement, normals)
 
     @set_results_mean_and_by_attr("displacement_by_leaflet")
     def _conclude(self):
