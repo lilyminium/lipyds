@@ -97,7 +97,7 @@ class AreaPerLipid(BilayerAnalysisBase):
             coordinates = self.leaflet_coordinates[i]
             pairs = self_capped_distance(surface.surface.points,
                                          self.cutoff,
-                                         box=self.box,
+                                        #  box=self.box,
                                          return_distances=False)
 
             for j in range(surface.n_points):
