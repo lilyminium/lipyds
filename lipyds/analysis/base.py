@@ -12,7 +12,7 @@ from MDAnalysis.analysis.distances import capped_distance
 
 from ..leafletfinder import LeafletFinder
 from ..lib.mdautils import get_centers_by_residue, unwrap_coordinates
-from ..lib.utils import cached_property, get_index_dict
+from ..lib.utils import cached_property, get_index_dict, axis_to_index
 from .surface import Bilayer
 
 logger = logging.getLogger(__name__)
@@ -252,7 +252,7 @@ class LeafletAnalysisBase(AnalysisBase):
 
         self._setup_frames(self._trajectory, start, stop, step)
         logger.info("Starting preparation")
-        self._prepare()
+        self._wrapped_prepare()
         for i, ts in enumerate(ProgressBar(
                 self._trajectory[self.start:self.stop:self.step],
                 verbose=verbose)):
@@ -266,12 +266,17 @@ class LeafletAnalysisBase(AnalysisBase):
             self._set_leaflets_with_outside()
             self._wrapped_single_frame()
         logger.info("Finishing up")
-        self._conclude()
-        # self._wrapped_conclude()
+        self._wrapped_conclude()
         return self
 
     def _wrapped_single_frame(self):
         self._single_frame()
+
+    def _wrapped_prepare(self):
+        self._prepare()
+
+    def _wrapped_conclude(self):
+        self._conclude()
 
     def results_as_dataframe(self):
         import pandas as pd
@@ -379,6 +384,7 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
                  augment_bilayer: bool = True,
                  augment_max: int = 2000,
                  coordinates_from_leafletfinder: bool = True,
+                 augment_cutoff=None,
                  **kwargs):
 
         super().__init__(universe, select=select,
@@ -393,10 +399,17 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         self.n_bilayers = self.leafletfinder.n_leaflets // 2
         self.augment_max = augment_max
         self.coordinates_from_leafletfinder = coordinates_from_leafletfinder
-        if augment_bilayer:
+        if augment_bilayer and not coordinates_from_leafletfinder:
             self._augment = self._pad_bilayer_coordinates
         else:
             self._augment = lambda x, y: y
+        if augment_cutoff is None:
+            augment_cutoff = self.leafletfinder.cutoff
+        self._augment_cutoff = augment_cutoff
+
+    @property
+    def augment_cutoff(self):
+        return self._augment_cutoff
 
     def _pad_bilayer_coordinates(self, index, coordinates):
         if coordinates.shape[0] >= self.augment_max:
@@ -411,7 +424,6 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
         leaflet = self.leaflet_coordinates[leaflet_index]
         _, point_indices = middle.kdtree.query(leaflet)
         return point_indices
-    
 
     def construct_bilayers(self):
         other_coordinates = self.other.positions
@@ -442,7 +454,7 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
                               other_coordinates=other_coordinates,
                               lower_indices=lower_indices,
                               upper_indices=upper_indices,
-                              box=self.box, cutoff=self.leafletfinder.cutoff,
+                              box=self.box, cutoff=self.augment_cutoff,
                               normal=self.normal_axis,
                               cutoff_other=self.cutoff_other)
             bilayers.append(bilayer)
@@ -451,3 +463,62 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
     def _wrapped_single_frame(self):
         self.construct_bilayers()
         self._single_frame()
+
+
+class GriddedBilayerAnalysisBase(BilayerAnalysisBase):
+
+    def __init__(self, universe: Union[AtomGroup, Universe],
+                 select: Optional[str] = "not protein",
+                 select_other: Optional[str] = "protein",
+                 leafletfinder: Optional[LeafletFinder] = None,
+                 leaflet_kwargs: Dict[str, Any] = {},
+                 group_by_attr: str = "resnames",
+                 pbc: bool = True, update_leaflet_step: int = 1,
+                 normal_axis=[0, 0, 1],
+                 cutoff_other: float = 5,
+                 grid_bounds="max", axes=("x", "y"),
+                 bin_size=2,
+                 **kwargs):
+        super().__init__(universe=universe,
+                         select=select, select_other=select_other,
+                         leafletfinder=leafletfinder,
+                         leaflet_kwargs=leaflet_kwargs,
+                         group_by_attr=group_by_attr,
+                         pbc=pbc, update_leaflet_step=update_leaflet_step,
+                         normal_axis=normal_axis,
+                         cutoff_other=cutoff_other,
+                         augment_bilayer=False,
+                         coordinates_from_leafletfinder=False)
+
+        self._axes = list(map(axis_to_index, axes))
+        self.bin_size = bin_size
+        self.grid_bounds = grid_bounds
+
+    def _wrapped_prepare(self):
+        self._setup_grid()
+        self._prepare()
+
+    def _setup_grid(self):
+        if isinstance(self.grid_bounds, str):
+            if self.grid_bounds == "max":
+                operator = np.max
+            elif self.grid_bounds == "min":
+                operator = np.min
+            else:
+                operator = np.mean
+
+            cell = [self.universe.dimensions for ts in self.universe.trajectory]
+            self.grid_bounds = operator(cell, axis=0)[self._axes] + self.bin_size
+
+        x, y = self.grid_bounds
+        self.x_axis = np.arange(0, x, self.bin_size, dtype=float)
+        self.n_x = len(self.x_axis)
+        self.y_axis = np.arange(0, y, self.bin_size, dtype=float)
+        self.n_y = len(self.y_axis)
+        self.grid_bounds = (self.x_axis[-1], self.y_axis[-1])
+        self._xx, self._yy = np.meshgrid(self.x_axis, self.y_axis)
+        self._xy = np.array(list(zip(self._xx.flat, self._yy.flat)))
+
+    @property
+    def _grid_shape(self):
+        return (self.n_bilayers, self.n_frames, self.n_x, self.n_y)

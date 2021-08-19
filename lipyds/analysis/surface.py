@@ -53,6 +53,23 @@ class Surface:
         self._create_surface(points, n_neighbors, n_points)
 
     @cached_property
+    def interpolator(self):
+        from scipy import interpolate as spinterp
+        z = self.normalized_points[:, 2]
+        rbf = spinterp.RBFInterpolator(self.normalized_points[:, :2], z,
+                                       smoothing=len(z), degree=1)
+        return rbf
+    
+    def interpolate(self, xy):
+        assert xy.shape[-1] == 2
+        return self.interpolator(xy)
+
+
+    @cached_property
+    def normalized_points(self):
+        return self.surface.points - self.points.min(axis=0)
+
+    @cached_property
     def kdtree(self):
         return KDTree(self.surface.points)
 
@@ -104,6 +121,9 @@ class Surface:
         # STEP 4 make the FINAL surface
         self.surface = pv.PolyData(new_points, new_faces)
         self.surface.point_arrays["vtkOriginalPointIds"] = original_points
+        origin = np.full(len(new_points), 0)
+        origin[:self.n_points] = 1
+        self.surface.point_arrays["Original"] = origin
         # calculate normals
         pvutils.compute_surface_normals(self.surface, global_normal=self.normal)
 

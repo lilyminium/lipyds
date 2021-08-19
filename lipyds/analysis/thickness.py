@@ -6,11 +6,11 @@ from scipy import interpolate as spinterp
 import numpy as np
 
 from ..leafletfinder import LeafletFinder
-from .base import BilayerAnalysisBase
+from .base import GriddedBilayerAnalysisBase
 from ..lib import utils
 
 
-class MembraneThickness(BilayerAnalysisBase):
+class MembraneThickness(GriddedBilayerAnalysisBase):
     r"""Calculate the thickness of one or more bilayers.
 
     This uses the local normals of each point in the "middle"
@@ -25,48 +25,22 @@ class MembraneThickness(BilayerAnalysisBase):
 
     """
 
-    def __init__(self, universe: Union[AtomGroup, Universe],
-                 select: Optional[str] = "not protein",
-                 select_other: Optional[str] = "protein",
-                 leafletfinder: Optional[LeafletFinder] = None,
-                 leaflet_kwargs: Dict[str, Any] = {},
-                 group_by_attr: str = "resnames",
-                 pbc: bool = True, update_leaflet_step: int = 1,
-                 normal_axis=[0, 0, 1],
-                 cutoff_other: float = 5,
-                 grid_bounds="max", axes=("x", "y"),
-                 bin_size=2,
+    def __init__(self, *args,
                  interpolator=spinterp.CloughTocher2DInterpolator,
                  **kwargs):
-        super().__init__(universe=universe,
-                         select=select, select_other=select_other,
-                         leafletfinder=leafletfinder,
-                         leaflet_kwargs=leaflet_kwargs,
-                         group_by_attr=group_by_attr,
-                         pbc=pbc, update_leaflet_step=update_leaflet_step,
-                         normal_axis=normal_axis,
-                         cutoff_other=cutoff_other,
-                         augment_bilayer=False,
-                         coordinates_from_leafletfinder=False)
-
-        self._axes = list(map(utils.axis_to_index, axes))
-        self.bin_size = bin_size
+        super().__init__(*args, **kwargs)
         if not isinstance(interpolator, type):
             interpolator = type(interpolator)
         self.interpolator = interpolator
-        self.grid_bounds = grid_bounds
 
     def _prepare(self):
-        self._setup_grid()
-        self._setup_axes()
-
         self.results.thicknesses = []
         self.results.points = []
         for n in range(self.n_bilayers):
             self.results.thicknesses.append([])
             self.results.points.append([])
-        shape = (self.n_bilayers, self.n_x, self.n_y, self.n_frames)
-        self.results.interpolated_thicknesses = np.full(shape, np.nan)
+
+        self.results.interpolated_thicknesses = np.full(self._grid_shape, np.nan)
 
     def _single_frame(self):
         frame = self._frame_index
@@ -76,7 +50,7 @@ class MembraneThickness(BilayerAnalysisBase):
             xy = points[:, self._axes]
             interpolator = self.interpolator(xy[mask], thickness[mask])
             interpolated = interpolator(*self.xy)
-            self.results.interpolated_thicknesses[i, ..., frame] = interpolated.T
+            self.results.interpolated_thicknesses[i, frame] = interpolated.T
             self.results.thicknesses[i].append(thickness)
             self.results.points[i].append(points)
 
@@ -86,28 +60,5 @@ class MembraneThickness(BilayerAnalysisBase):
         for i, bilayer in enumerate(self.results.thicknesses):
             self.results.thickness_mean[i] = [np.nanmean(x) for x in bilayer]
             self.results.thickness_std[i] = [np.nanstd(x) for x in bilayer]
-        self.results.mean_interpolated = np.nanmean(self.results.interpolated_thicknesses, axis=-1)
-        self.results.sd_interpolated = np.nanstd(self.results.interpolated_thicknesses, axis=-1)
-
-
-    def _setup_grid(self):
-        if not isinstance(self.grid_bounds, str):
-            return
-        if self.grid_bounds == "max":
-            operator = np.max
-        elif self.grid_bounds == "min":
-            operator = np.min
-        else:
-            operator = np.mean
-
-        cell = [self.universe.dimensions for ts in self.universe.trajectory]
-        self.grid_bounds = operator(cell, axis=0)[self._axes] + self.bin_size
-
-    def _setup_axes(self):
-        x, y = self.grid_bounds
-        self.x_axis = np.arange(0, x, self.bin_size, dtype=float)
-        self.n_x = len(self.x_axis)
-        self.y_axis = np.arange(0, y, self.bin_size, dtype=float)
-        self.n_y = len(self.y_axis)
-        self.grid_bounds = (self.x_axis[-1], self.y_axis[-1])
-        self.xy = np.meshgrid(self.x_axis, self.y_axis)
+        self.results.mean_interpolated = np.nanmean(self.results.interpolated_thicknesses, axis=1)
+        self.results.sd_interpolated = np.nanstd(self.results.interpolated_thicknesses, axis=1)
