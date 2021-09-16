@@ -21,6 +21,7 @@ def augment_coordinates(coordinates: ArrayLike,
     real_dists = calc_bonds(coordinates[a], coordinates[b])
     to_shift = pbc_dists < real_dists
     a, b = pbc_pairs[to_shift].T
+
     output = np.empty((a.shape[0], 3), dtype=np.float32)
     for i in range(output.shape[0]):
         output[i] = unwrap_around(coordinates[[b[i]]], coordinates[a[i]], box, output[[i]])

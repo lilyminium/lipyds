@@ -108,6 +108,7 @@ class LeafletAnalysisBase(AnalysisBase):
                  group_by_attr: str = "resnames",
                  pbc: bool = True, update_leaflet_step: int = 1,
                  point_coordinates: Literal["average", "closest"] = "average",
+                 leaflet_distance_cutoff: float=10,
                  **kwargs):
         self._cache = {}
         super().__init__(universe.universe.trajectory, **kwargs)
@@ -121,6 +122,7 @@ class LeafletAnalysisBase(AnalysisBase):
         self.group_by_attr = group_by_attr
         self.update_leaflet_step = update_leaflet_step
         self.point_coordinates = point_coordinates
+        self.leaflet_distance_cutoff = leaflet_distance_cutoff
 
         # get selection and labels
         self.selection = universe.select_atoms(select)
@@ -163,7 +165,7 @@ class LeafletAnalysisBase(AnalysisBase):
     def _set_leaflets_with_outside(self):
         leaflets = np.full(self.n_residues, -1, dtype=int)
         leaflets[self._inside_ix] = self.leafletfinder.residue_leaflets[self._inside_lfinder_ix]
-        outside = self.leafletfinder.assign_atoms_by_distance(self._outside)
+        outside = self.leafletfinder.assign_atoms_by_distance(self._outside, cutoff=self.leaflet_distance_cutoff)
         leaflets[self._outside_ix] = outside
         self.residue_leaflets = leaflets
 
@@ -176,8 +178,9 @@ class LeafletAnalysisBase(AnalysisBase):
 
     @cached_property
     def leaflet_indices(self):
+        not_nan = self.residue_leaflets[self.residue_leaflets != -1]
         return [np.where(self.residue_leaflets == i)[0]
-                for i in np.unique(self.residue_leaflets)]
+                for i in np.unique(not_nan)]
 
     @cached_property
     def leaflet_residues(self):
@@ -190,11 +193,16 @@ class LeafletAnalysisBase(AnalysisBase):
 
     @cached_property
     def leaflet_coordinates(self):
-        # leaflets = [unwrap_coordinates(x, center=x[0], box=self.box) for x in self.leaflet_point_coordinates]
-        unwrapped = [unwrap_coordinates(x, center=self.leaflet_point_coordinates[0][0],
+        leaflets = [unwrap_coordinates(x, center=x[0], box=self.box) for x in self.leaflet_point_coordinates]
+        # unwrapped = [unwrap_coordinates(x, center=self.leaflet_point_coordinates[0][0],
+        #              box=self.box)
+        #              for x in self.leaflet_point_coordinates]
+        
+        unwrapped = [unwrap_coordinates(x, center=leaflets[0][0],
                      box=self.box)
-                     for x in self.leaflet_point_coordinates]
+                     for x in leaflets]
         return unwrapped
+        # return leaflets
 
     @cached_property
     def leaflet_point_coordinates(self):
@@ -392,7 +400,7 @@ class BilayerAnalysisBase(LeafletAnalysisBase):
                          leaflet_kwargs=leaflet_kwargs,
                          group_by_attr=group_by_attr,
                          pbc=pbc, update_leaflet_step=update_leaflet_step,
-                         normal_axis=normal_axis)
+                         normal_axis=normal_axis, **kwargs)
         self.other = universe.select_atoms(select_other)
         self.cutoff_other = cutoff_other
         self.normal_axis = np.asarray(normal_axis)
@@ -488,7 +496,7 @@ class GriddedBilayerAnalysisBase(BilayerAnalysisBase):
                          normal_axis=normal_axis,
                          cutoff_other=cutoff_other,
                          augment_bilayer=False,
-                         coordinates_from_leafletfinder=False)
+                         coordinates_from_leafletfinder=False, **kwargs)
 
         self._axes = list(map(axis_to_index, axes))
         self.bin_size = bin_size

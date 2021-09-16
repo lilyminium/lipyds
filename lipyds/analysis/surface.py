@@ -95,6 +95,7 @@ class Surface:
         return np.unique(np.vstack(edges), axis=0)
 
     def _create_surface(self, points, n_neighbors, n_points):
+        print("points, neighbors, n_points", points.shape, n_neighbors, n_points)
         # step 1: smooth delaunay
         cloud = pv.PolyData(points)
         self._surface1 = cloud.delaunay_2d()

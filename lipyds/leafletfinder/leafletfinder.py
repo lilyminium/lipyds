@@ -285,11 +285,18 @@ class LeafletFinder:
             for resindex in residues.resindices:
                 self.resindex_to_leaflet[resindex] = i
 
-    def atom_leaflet_by_distance(self, atom):
-        pairs = capped_distance(atom.position,
-                                self._first_residue_atoms.positions,
-                                max_cutoff=self.cutoff,
-                                box=self.box, return_distances=False)
+    def atom_leaflet_by_distance(self, atom, cutoff=10):
+        zs = self._first_residue_atoms.positions
+        # zs[:, :2] = 0
+
+        atom_z = atom.position
+        # atom_z[:2] = 0
+        pairs, dists = capped_distance(atom_z,
+                                        zs,
+                                        max_cutoff=self.cutoff,
+                                        box=self.box, return_distances=True)
+        if dists.min() > cutoff:
+            return -1
         if len(pairs):
             neighbors = self.residue_leaflets[pairs[:, 1]]
             most_common = np.bincount(neighbors).argmax()
@@ -297,12 +304,13 @@ class LeafletFinder:
         distances = distance_array(atom.position,
                                    self._first_residue_atoms.positions,
                                    box=self.box).reshape(-1)
+        arg = distances.argmin()
         return self.residue_leaflets[distances.argmin()]
 
-    def assign_atoms_by_distance(self, atomgroup):
+    def assign_atoms_by_distance(self, atomgroup, cutoff=10):
         leaflets = np.full(len(atomgroup), -1, dtype=int)
         for i, atom in enumerate(atomgroup):
-            leaflets[i] = self.atom_leaflet_by_distance(atom)
+            leaflets[i] = self.atom_leaflet_by_distance(atom, cutoff=cutoff)
         return leaflets
 
     def get_first_outside_atoms(self, residues):
