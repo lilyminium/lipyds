@@ -194,12 +194,29 @@ class LeafletAnalysisBase(AnalysisBase):
     @cached_property
     def leaflet_coordinates(self):
         leaflets = [unwrap_coordinates(x, center=x[0], box=self.box) for x in self.leaflet_point_coordinates]
-        # unwrapped = [unwrap_coordinates(x, center=self.leaflet_point_coordinates[0][0],
-        #              box=self.box)
-        #              for x in self.leaflet_point_coordinates]
         
-        unwrapped = [unwrap_coordinates(x, center=leaflets[0][0],
-                     box=self.box)
+        # # unwrapped = [unwrap_coordinates(x, center=self.leaflet_point_coordinates[0][0],
+        # #              box=self.box)
+        # #              for x in self.leaflet_point_coordinates]
+
+        # minimum = self.box[:3] - leaflets[0].max(axis=0)
+
+        # # # print(minimum)
+        minimum = np.concatenate(leaflets).min(axis=0)
+        leaflets = [x - minimum for x in leaflets]
+
+        # # center = self.box[:3] / 2
+        # # # # print(self.universe.dimensions)
+        # print([x.min(axis=0) for x in leaflets])
+        # print([x.max(axis=0) for x in leaflets])
+
+        # diff = leaflets[0].mean(axis=0) - leaflets[-1].mean(axis=0)
+        # center = leaflets[-1].mean(axis=0) + (diff / 2)
+        center = np.concatenate(leaflets).mean(axis=0)
+        
+        unwrapped = [unwrap_coordinates(x, center,
+                     box=self.box,
+                     )
                      for x in leaflets]
         return unwrapped
         # return leaflets

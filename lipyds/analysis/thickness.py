@@ -49,7 +49,7 @@ class MembraneThickness(GriddedBilayerAnalysisBase):
             mask = ~np.isnan(thickness)
             xy = points[:, self._axes]
             interpolator = self.interpolator(xy[mask], thickness[mask])
-            interpolated = interpolator(*self.xy)
+            interpolated = interpolator(self._xx, self._yy)
             self.results.interpolated_thicknesses[i, frame] = interpolated.T
             self.results.thicknesses[i].append(thickness)
             self.results.points[i].append(points)
