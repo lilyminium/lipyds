@@ -40,20 +40,28 @@ try:
 except ImportError:
     print("Lipyds requires numpy")
 
+
 def get_extensions():
     compile_args = ['-std=c++11', '-ffast-math', '-funroll-loops',
                     '-fsigned-zeros', '-O3']
     mathlib = [] if os.name == "nt" else ["m"]  # don't link maths for Windows
-    
+
     # EXTENSION LIST
-    
-    cutils = Extension(name="lipyds.lib.cutils", 
+
+    # cutils = Extension(name="lipyds.lib.cutils",
+    #                    sources=["lipyds/lib/cutils.pyx"],
+    #                    include_dirs=[np.get_include()],
+    #                    libraries=mathlib,
+    #                    language="c++",
+    #                    extra_compile_args=compile_args)
+
+    cutils = Extension(name="lipyds.lib.cutils",
                        sources=["lipyds/lib/cutils.pyx"],
-                       include_dirs=[np.get_include()],
+                       include_dirs=[np.get_include(), "lipyds/lib/include"],
                        libraries=mathlib,
                        language="c++",
                        extra_compile_args=compile_args)
-    
+
     # COMPILATION LIST
     exts = [cutils]
 
@@ -75,11 +83,11 @@ if __name__ == "__main__":
         long_description = "\n".join(short_description[2:])
 
     install_requires = [
-            'cython',
-            'numpy>=1.16.0',
-            'mdanalysis>=1.0.0',
-            'mdanalysistests>=1.0.0',
-        ]
+        'cython',
+        'numpy>=1.16.0',
+        'mdanalysis>=1.0.0',
+        'mdanalysistests>=1.0.0',
+    ]
 
     setup(
         # Self-descriptive entries which should always be present
@@ -111,9 +119,9 @@ if __name__ == "__main__":
         # url='http://www.my_package.com',  # Website
         install_requires=install_requires,  # Required packages, pulls from pip if needed; do not use for Conda deployment
         platforms=['Linux',
-                'Mac OS-X',
-                'Unix',
-                'Windows'],            # Valid platforms your code works on, adjust to your flavor
+                   'Mac OS-X',
+                   'Unix',
+                   'Windows'],            # Valid platforms your code works on, adjust to your flavor
         python_requires=">=3.6",          # Python version restrictions
 
         # Manual control if final package is compressible or not, set False to prevent the .egg from being made

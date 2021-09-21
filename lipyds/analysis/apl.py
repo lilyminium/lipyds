@@ -11,120 +11,23 @@ Classes
     :members:
 
 """
-
-from collections import defaultdict
-import itertools
-from typing import Optional, Union
-
-import numpy as np
-from MDAnalysis.analysis.distances import capped_distance
+from typing import Union, Optional, Dict, Any
 from MDAnalysis.core.universe import Universe
 from MDAnalysis.core.groups import AtomGroup
-from numpy.typing import ArrayLike
-
-from .base import LeafletAnalysisBase
-from ..leafletfinder.utils import get_centers_by_residue
-from ..lib.cutils import unwrap_around
+from MDAnalysis.lib.distances import self_capped_distance
+from scipy.spatial import ConvexHull, KDTree, Voronoi
+from scipy.spatial.transform import Rotation
 
 
-def lipid_area(headgroup_coordinate: ArrayLike,
-               neighbor_coordinates: ArrayLike,
-               other_coordinates: Optional[ArrayLike]=None,
-               box: Optional[ArrayLike]=None,
-               plot: bool=False) -> float:
-    """
-    Calculate the area of a lipid by projecting it onto a plane with
-    neighboring coordinates and creating a Voronoi diagram.
+import numpy as np
 
-    Parameters
-    ----------
-    headgroup_coordinate: numpy.ndarray
-        Coordinate array of shape (3,) or (n, 3) of the central lipid
-    neighbor_coordinates: numpy.ndarray
-        Coordinate array of shape (n, 3) of neighboring lipids to the central lipid.
-        These coordinates are used to construct the plane of best fit.
-    other_coordinates: numpy.ndarray (optional)
-        Coordinate array of shape (n, 3) of neighboring atoms to the central lipid.
-        These coordinates are *not* used to construct the plane of best fit, but
-        are projected onto it.
-    box: numpy.ndarray (optional)
-        Box of minimum cell, used for unwrapping coordinates.
-    plot: bool (optional)
-        Whether to plot the resulting Voronoi diagram.
-
-    Returns
-    -------
-    area: float
-        Area of the central lipid
-    
-    Raises
-    ------
-    ValueError
-        If a Voronoi cell cannot be constructed for the central lipid, usually
-        because too few neighboring lipids have been given.
-    """
-    from scipy.spatial import Voronoi
-    
-    # preprocess coordinates
-    headgroup_coordinate = np.asarray(headgroup_coordinate)
-    if len(headgroup_coordinate.shape) > 1:
-        if box is not None:
-            headgroup_coordinates = unwrap_around(headgroup_coordinate.copy(),
-                                                  headgroup_coordinate[0],
-                                                  box)
-        headgroup_coordinate = headgroup_coordinates.mean(axis=0)
-
-    if len(neighbor_coordinates) < 2:
-        return np.nan
-
-    if box is not None:
-        neighbor_coordinates = unwrap_around(neighbor_coordinates.copy(),
-                                             headgroup_coordinate,
-                                             box)
-        if other_coordinates is not None:
-            other_coordinates = np.asarray(other_coordinates).copy()
-            other_coordinates = unwrap_around(other_coordinates,
-                                              headgroup_coordinate,
-                                              box)
-    points = np.concatenate([[headgroup_coordinate], neighbor_coordinates])
-    points -= headgroup_coordinate
-    center = points.mean(axis=0)
-    points -= center
-
-    Mt_M = np.matmul(points.T, points)
-    u, s, vh = np.linalg.linalg.svd(Mt_M)
-    # project onto plane
-    if other_coordinates is not None:
-        points = np.r_[points, other_coordinates-center]
-    xy = np.matmul(points, vh[:2].T)
-    xy -= xy[0]
-    # voronoi
-    vor = Voronoi(xy)
-    headgroup_cell_int = vor.point_region[0]
-    headgroup_cell = vor.regions[headgroup_cell_int]
-
-    if plot:
-        from scipy.spatial import voronoi_plot_2d
-        import matplotlib.pyplot as plt
-        fig = voronoi_plot_2d(vor, show_vertices=False, line_alpha=0.6)
-        plt.plot([vor.points[0][0]], [vor.points[0][1]], 'r+', markersize=12)
-        plt.show()
-
-    if not all(vertex != -1 for vertex in headgroup_cell):
-        raise ValueError("headgroup not bounded by Voronoi cell points: "
-                            f"{headgroup_cell}. "
-                            "Try including more neighbor points")
-    
-    # x and y should be ordered clockwise
-    x, y = np.array([vor.vertices[x] for x in headgroup_cell]).T
-    area = np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:])
-    area += (x[-1] * y[0] - y[-1] * x[0])
-    lipid_area = 0.5 * np.abs(area)
-
-    return lipid_area
+from ..leafletfinder import LeafletFinder
+from .base import BilayerAnalysisBase, set_results_mean_and_by_attr
+from ..lib import mdautils
 
 
-class AreaPerLipid(LeafletAnalysisBase):
+
+class AreaPerLipid(BilayerAnalysisBase):
     """
     Calculate the area of each lipid by projecting it onto a plane with
     neighboring coordinates and creating a Voronoi diagram.
@@ -149,98 +52,106 @@ class AreaPerLipid(LeafletAnalysisBase):
         selection. This is generally shorter than ``cutoff`` -- e.g.
         you may look for only lipid headgroups in ``select``, but all
         protein atoms in ``select_other``.
-    max_neighbors: int (optional)
-        Maximum neighbors to consider for area calculation. Past 40 the
-        area tends to converge, and the lower the number of neighbors,
-        the more efficient the calculation.
     **kwargs
-        Passed to :class:`~lipyds.analysis.base.LeafletAnalysisBase`
+        Passed to :class:`~lipyds.analysis.base.BilayerAnalysisBase`
     """
 
+    units = {"Areas": "Å^2"}
+
     def __init__(self, universe: Union[AtomGroup, Universe],
-                 cutoff: float=50, cutoff_other: Optional[float]=15,
-                 select_other: Optional[str]="protein",
-                 max_neighbors: int=100, **kwargs):
-        super().__init__(universe, **kwargs)
-        if select_other is None:
-            self.other = self.universe.atoms[[]]
-        else:
-            self.other = universe.select_atoms(select_other) - self.residues.atoms
-        if len(self.other):
-            self._get_other_coordinates = self._get_other
-        else:
-            self._get_other_coordinates = lambda x, y, z: None
+                 select: Optional[str] = "not protein",
+                 select_other: Optional[str] = "protein",
+                 leafletfinder: Optional[LeafletFinder] = None,
+                 leaflet_kwargs: Dict[str, Any] = {},
+                 group_by_attr: str = "resnames",
+                 pbc: bool = True, update_leaflet_step: int = 1,
+                 normal_axis=[0, 0, 1],
+                 cutoff_other: float = 5,
+                 cutoff: float = 15,
+                 **kwargs):
+        super().__init__(universe=universe,
+                         select=select, select_other=select_other,
+                         leafletfinder=leafletfinder,
+                         leaflet_kwargs=leaflet_kwargs,
+                         group_by_attr=group_by_attr,
+                         pbc=pbc, update_leaflet_step=update_leaflet_step,
+                         normal_axis=normal_axis,
+                         cutoff_other=cutoff_other,
+                         augment_bilayer=False,
+                         coordinates_from_leafletfinder=False)
         self.cutoff = cutoff
-        if cutoff_other is None:
-            cutoff_other = cutoff
-        self.cutoff_other = cutoff_other
-        self.unique_ids = np.unique(self.ids)
-        self.max_neighbors = max_neighbors
 
     def _prepare(self):
-        self.areas = np.zeros((self.n_frames, self.n_residues))
-        self.areas_by_leaflet = np.zeros((self.n_frames, self.n_leaflets, self.n_residues))
-        self.areas_by_leaflet[:] = np.nan
-        self.areas_by_attr = []
-        for i in range(self.n_leaflets):
-            dct = {}
-            for each in self.unique_ids:
-                dct[each] = []
-            self.areas_by_attr.append(dct)
+        self.results.areas_by_leaflet = self._nan_array_by_leaflet()
+        # self.results.total_areas_by_leaflet = np.full((self.n_leaflets, self.n_frames), np.nan)
 
-    def _get_other(self, central_xyz: ArrayLike, other: ArrayLike,
-                   box: Optional[ArrayLike]=None) -> Optional[ArrayLike]:
-        pairs2 = capped_distance(central_xyz, other, self.cutoff_other,
-                                 box=box, return_distances=False)
-        if len(pairs2):
-            other_xyz = other[np.unique(pairs2[:, 1])]
-        else:
-            other_xyz = None
-        
-        return other_xyz
 
-    
     def _single_frame(self):
-        other = self.other.positions
-        box = self.get_box()
+        frame = self.results.areas_by_leaflet[..., self._frame_index]
+        for i, indices in enumerate(self.leaflet_indices):
+            bilayer = self.bilayers[i // 2]
+            middle = bilayer.middle
+            surface = bilayer.leaflets[i % 2]
+            point_indices = self.get_nearest_indices(i)
+            normals = middle.surface.point_normals[point_indices]
+            coordinates = self.leaflet_coordinates[i]
+            pairs = self_capped_distance(surface.surface.points,
+                                         self.cutoff,
+                                        #  box=self.box,
+                                         return_distances=False)
 
-        for lf_i in range(self.n_leaflets):
-            ag = self.leaflet_atomgroups[lf_i]
-            coords = get_centers_by_residue(ag)
+            for j in range(surface.n_points):
+                ix_ = [j]
+                inside = np.where(np.any(pairs == j, axis=1))[0]
+                inside = list(np.ravel(pairs[inside]))
+                inside += list(surface.get_neighbors([j]))
+                ix_ += list(set([x for x in inside if x != j]))
 
-            pairs, dists = capped_distance(coords, coords,
-                                           self.cutoff,
-                                           box=box,
-                                           return_distances=True)
+                print(len(ix_))
+
+                if len(ix_) < 4:
+                    continue
+
+                points = surface.surface.points[ix_]
+                points = points - points[0]
+
+                normal = normals[j]
+                z = np.array([0, 0, 1])
+                x_ = np.cross(normal, z)
+                x_ /= np.linalg.norm(x_)
+                y_ = np.cross(normal, x_)
+                y_ /= np.linalg.norm(y_)
+                current_basis = [x_, y_, normal, points[0]]
+                new_basis = [*np.identity(3), points[0]]
+
+                rotation_matrix, rmsd = Rotation.align_vectors(current_basis, new_basis)
+                xy = np.matmul(points, rotation_matrix.as_matrix())
+                xy -= xy[0]
+
+                vor = Voronoi(xy[:, :2])
+                headgroup_cell_int = vor.point_region[0]
+                headgroup_cell = vor.regions[headgroup_cell_int]
+                # x and y should be ordered clockwise
+                x, y = np.array([vor.vertices[x] for x in headgroup_cell]).T
+                area = np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:])
+                area += (x[-1] * y[0] - y[-1] * x[0])
+                lipid_area = 0.5 * np.abs(area)
+                frame[i, indices[j]] = lipid_area
+
             
-            if not len(pairs):
-                continue
-            
-            # think this is faster than constructing massive voronoi diagram
-            splix = np.where(np.ediff1d(pairs[:, 0]))[0] + 1
-            plist = np.split(pairs, splix)
-            dlist = np.split(dists, splix)
-            d_order = [np.argsort(x) for x in dlist]
-            plist = [p[x[:self.max_neighbors+1]] for p, x in zip(plist, d_order)]
 
-            for pairs_ in plist:
-                central_i = pairs_[0, 0]
-                central_coord = coords[central_i]
-                neighbor_coords = coords[pairs_[1:, 1]]
 
-                other_coords = self._get_other_coordinates(central_coord, other, box)
 
-                try:
-                    area = lipid_area(central_coord, neighbor_coords,
-                                      other_coordinates=other_coords,
-                                      box=box)
-                except ValueError:
-                    area = np.nan
 
-                resindex = ag.residues[central_i].resindex
-                residue_index = self._resindex_to_analysis_order[resindex]
-                residue_label = self.ids[residue_index]
+        # total = self.results.total_areas_by_leaflet[..., self._frame_index]
+        # i = 0
 
-                self.areas[self._frame_index][residue_index] = area
-                self.areas_by_leaflet[self._frame_index][lf_i][residue_index] = area
-                self.areas_by_attr[lf_i][residue_label].append(area)
+        # for bilayer in self.bilayers:
+        #     for leaflet in bilayer.leaflets:
+        #         areas = leaflet.compute_all_vertex_areas()
+        #         frame[i][leaflet.analysis_indices] = areas
+        #         i += 1
+
+    @set_results_mean_and_by_attr("areas_by_leaflet")
+    def _conclude(self):
+        pass
