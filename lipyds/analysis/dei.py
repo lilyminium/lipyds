@@ -121,8 +121,8 @@ class LipidEnrichment(LeafletAnalysisBase):
         super()._update_leaflets()
         self._current_leaflet_residues = {}
         self._current_leaflet_ids = {}
-        for i, residue_ix in self.leaflet_residues.items():
-            leaflet_residues = sum(self.residues[i] for i in residue_ix)
+        for i, residue_ix in enumerate(self.leaflet_residues):
+            leaflet_residues = sum(self.residues[j] for j in residue_ix)
             self._current_leaflet_residues[i] = leaflet_residues
             self._current_leaflet_ids[i] = getattr(leaflet_residues, self.group_by_attr)
 
