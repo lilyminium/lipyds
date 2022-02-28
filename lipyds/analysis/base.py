@@ -108,7 +108,7 @@ class LeafletAnalysisBase(AnalysisBase):
                  group_by_attr: str = "resnames",
                  pbc: bool = True, update_leaflet_step: int = 1,
                  point_coordinates: Literal["average", "closest"] = "average",
-                 leaflet_distance_cutoff: float=10,
+                 leaflet_distance_cutoff: float = 10,
                  **kwargs):
         self._cache = {}
         super().__init__(universe.universe.trajectory, **kwargs)
@@ -194,7 +194,7 @@ class LeafletAnalysisBase(AnalysisBase):
     @cached_property
     def leaflet_coordinates(self):
         leaflets = [unwrap_coordinates(x, center=x[0], box=self.box) for x in self.leaflet_point_coordinates]
-        
+
         # # unwrapped = [unwrap_coordinates(x, center=self.leaflet_point_coordinates[0][0],
         # #              box=self.box)
         # #              for x in self.leaflet_point_coordinates]
@@ -213,10 +213,10 @@ class LeafletAnalysisBase(AnalysisBase):
         # diff = leaflets[0].mean(axis=0) - leaflets[-1].mean(axis=0)
         # center = leaflets[-1].mean(axis=0) + (diff / 2)
         center = np.concatenate(leaflets).mean(axis=0)
-        
+
         unwrapped = [unwrap_coordinates(x, center,
                      box=self.box,
-                     )
+                                        )
                      for x in leaflets]
         return unwrapped
         # return leaflets
