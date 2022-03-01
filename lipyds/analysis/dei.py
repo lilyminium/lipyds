@@ -20,6 +20,7 @@ from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.analysis import distances
 from .base import LeafletAnalysisBase
 
+
 class LipidEnrichment(LeafletAnalysisBase):
     r"""Calculate the lipid depletion-enrichment index around a protein
     by leaflet.
@@ -79,11 +80,11 @@ class LipidEnrichment(LeafletAnalysisBase):
         The first dictionary is for the first leaflet, etc.
     """
 
-    def __init__(self, universe: Union[AtomGroup, Universe], 
-                 select_protein: str="protein",
-                 cutoff: float=6,
-                 distribution: str="binomial",
-                 buffer: float=0, beta: float=4,
+    def __init__(self, universe: Union[AtomGroup, Universe],
+                 select_protein: str = "protein",
+                 cutoff: float = 6,
+                 distribution: str = "binomial",
+                 buffer: float = 0, beta: float = 4,
                  **kwargs):
         super(LipidEnrichment, self).__init__(universe, **kwargs)
 
@@ -119,10 +120,12 @@ class LipidEnrichment(LeafletAnalysisBase):
 
     def _update_leaflets(self):
         super()._update_leaflets()
+        self._set_leaflets_with_outside()
         self._current_leaflet_residues = {}
         self._current_leaflet_ids = {}
-        for i, residue_ix in self.leaflet_residues.items():
-            leaflet_residues = sum(self.residues[i] for i in residue_ix)
+        self._cache = {}
+        for i, residues in enumerate(self.leaflet_residues):
+            leaflet_residues = sum(residues) if len(residues) else self.residues[[]]
             self._current_leaflet_residues[i] = leaflet_residues
             self._current_leaflet_ids[i] = getattr(leaflet_residues, self.group_by_attr)
 
@@ -145,14 +148,14 @@ class LipidEnrichment(LeafletAnalysisBase):
                                                      min_cutoff=self.cutoff,
                                                      box=self.protein.dimensions,
                                                      return_distances=True)
-            
+
             # don't count things in inner cutoff
             mask = [x not in indices for x in pairs2[:, 1]]
             pairs2 = pairs2[mask]
             dist = dist[mask]
 
             if pairs2.size > 0:
-                _ix = np.argsort(pairs2[:, 1])  
+                _ix = np.argsort(pairs2[:, 1])
                 indices2 = pairs2[_ix][:, 1]
                 dist = dist[_ix] - self.cutoff
 
@@ -223,7 +226,6 @@ class LipidEnrichment(LeafletAnalysisBase):
                 summary[resname] = s
             self.dei_by_leaflet.append(timeseries)
             self.leaflets_summary.append(summary)
-
 
     def _fit_gaussian(self, data, *args, **kwargs):
         """Treat each frame as an independent observation in a gaussian
@@ -306,11 +308,10 @@ class LipidEnrichment(LeafletAnalysisBase):
         summary['Mean fraction of species, shell'] = p_shell
         summary['SD fraction of species, shell'] = sd_frac = sd / n_near.mean()
 
-
         if p_null == 0:
             summary['Mean enrichment'] = 1
             summary['SD enrichment'] = 0
-        
+
         else:
             summary['Mean enrichment'] = p_shell / p_null
             summary['SD enrichment'] = sd_frac / p_null
