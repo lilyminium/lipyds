@@ -9,9 +9,9 @@ from lipyds import LeafletFinder, LipidEnrichment
 
 
 @pytest.mark.parametrize("distribution, cutoff, buffer, upper_popc, lower_popc", [
-    ("binomial", 6, 0, 0.59, 0.89),
-    ("binomial", 6, 2, 0.53, 1.11),
-    ("gaussian", 6, 0, 0.59, 0.89),
+    ("binomial", 6, 0, 0.59, 0.92),
+    ("binomial", 6, 2, 0.53, 1.14),
+    ("gaussian", 6, 0, 0.59, 0.92),
 ])
 def test_dei(distribution, cutoff, buffer, upper_popc, lower_popc):
     u = mda.Universe(NEURONAL_DDAT)

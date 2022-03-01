@@ -4,5 +4,5 @@ from .thickness import MembraneThickness
 from .tilt import LipidTilt
 from .distance import ProjectedDisplacement
 from .curvature import Curvature
-# from .dei import LipidEnrichment
+from .dei import LipidEnrichment
 # from .flipflop import LipidFlipFlop
