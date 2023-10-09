@@ -16,6 +16,7 @@ class Surface:
                  cutoff_other=5,
                  box=None, cutoff=20, normal=[0, 0, 1],
                  analysis_indices=None,):
+        
         self._cache = {}
         self.normal = np.asarray(normal)
         self.analysis_indices = analysis_indices
@@ -95,36 +96,38 @@ class Surface:
         return np.unique(np.vstack(edges), axis=0)
 
     def _create_surface(self, points, n_neighbors, n_points):
-        print("points, neighbors, n_points", points.shape, n_neighbors, n_points)
         # step 1: smooth delaunay
         cloud = pv.PolyData(points)
-        self._surface1 = cloud.delaunay_2d()
+        surface1: pv.PolyData = cloud.delaunay_2d()
 
         # step 2: extract non-protein points
-        lipids = np.ones_like(self._surface1.points, dtype=bool)
+        lipids = np.ones_like(surface1.points, dtype=bool)
         lipids[np.arange(n_neighbors) + n_points] = False
         not_other = np.where(lipids)[0]
         self.augmented_indices = self.augmented_indices[not_other]
-        self._grid2 = self._surface1.extract_points(not_other)
+        grid2: pv.UnstructuredGrid = surface1.extract_points(not_other)
+        if not grid2.n_points:
+            raise ValueError("No points left in Surface")
 
         # step 3: generate new surface
-        surface = self._grid2.extract_surface()
+        surface: pv.PolyData = grid2.extract_surface()
+
         # annoyingly, the points get reordered
-        _mapping = np.argsort(surface.point_arrays["vtkOriginalPointIds"])
-        original_points = surface.point_arrays["vtkOriginalPointIds"][_mapping]
+        _mapping = np.argsort(surface["vtkOriginalPointIds"])
+        original_points = surface["vtkOriginalPointIds"][_mapping]
         new_to_original = {x: i for i, x in enumerate(_mapping)}
         new_points = surface.points[_mapping]
-        faces = surface.faces.reshape((-1, 4))
+        faces = np.array(surface.faces.reshape((-1, 4)))
         for row in faces[:, 1:]:
             for i, x in enumerate(row):
                 row[i] = new_to_original[x]
         new_faces = faces.ravel()
         # STEP 4 make the FINAL surface
         self.surface = pv.PolyData(new_points, new_faces)
-        self.surface.point_arrays["vtkOriginalPointIds"] = original_points
+        self.surface["vtkOriginalPointIds"] = original_points
         origin = np.full(len(new_points), 0)
         origin[:self.n_points] = 1
-        self.surface.point_arrays["Original"] = origin
+        self.surface["Original"] = origin
         # calculate normals
         pvutils.compute_surface_normals(self.surface, global_normal=self.normal)
 
@@ -217,7 +220,7 @@ class Surface:
             n = self.n_points
         for i in range(n):
             areas[i] = self.compute_vertex_area(i)
-        self.surface.point_arrays["APL"] = areas
+        self.surface["APL"] = areas
         return areas[:n]
 
 
@@ -292,5 +295,5 @@ class Bilayer:
         else:
         #     padded[self.middle._inverse_mapping[:len(thickness)]] = thickness
             points = self.middle.points
-        self.middle.surface.point_arrays["Thickness"] = padded
+        self.middle.surface["Thickness"] = padded
         return points, thickness

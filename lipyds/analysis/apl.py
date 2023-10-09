@@ -83,8 +83,6 @@ class AreaPerLipid(BilayerAnalysisBase):
 
     def _prepare(self):
         self.results.areas_by_leaflet = self._nan_array_by_leaflet()
-        # self.results.total_areas_by_leaflet = np.full((self.n_leaflets, self.n_frames), np.nan)
-
 
     def _single_frame(self):
         frame = self.results.areas_by_leaflet[..., self._frame_index]
@@ -107,12 +105,10 @@ class AreaPerLipid(BilayerAnalysisBase):
                 inside += list(surface.get_neighbors([j]))
                 ix_ += list(set([x for x in inside if x != j]))
 
-                print(len(ix_))
-
                 if len(ix_) < 4:
                     continue
 
-                points = surface.surface.points[ix_]
+                points = np.array(surface.surface.points[ix_])
                 points = points - points[0]
 
                 normal = normals[j]
@@ -136,21 +132,11 @@ class AreaPerLipid(BilayerAnalysisBase):
                 area = np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:])
                 area += (x[-1] * y[0] - y[-1] * x[0])
                 lipid_area = 0.5 * np.abs(area)
+
                 frame[i, indices[j]] = lipid_area
 
             
 
-
-
-
-        # total = self.results.total_areas_by_leaflet[..., self._frame_index]
-        # i = 0
-
-        # for bilayer in self.bilayers:
-        #     for leaflet in bilayer.leaflets:
-        #         areas = leaflet.compute_all_vertex_areas()
-        #         frame[i][leaflet.analysis_indices] = areas
-        #         i += 1
 
     @set_results_mean_and_by_attr("areas_by_leaflet")
     def _conclude(self):
