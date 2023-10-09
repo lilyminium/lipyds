@@ -105,7 +105,7 @@ class LeafletFinder:
                  method: str = "spectralclustering",
                  n_leaflets: int = 2,
                  normal_axis: str = "z",
-                 add_topologyattribute: bool = False,
+                 update_TopologyAttr: bool = False,
                  **kwargs):
         self._cache = {}
         self.universe = universe.universe
@@ -147,6 +147,8 @@ class LeafletFinder:
         else:
             self._method = self.method = method
 
+        self._update_TopologyAttr = update_TopologyAttr
+
     @property
     def box(self):
         return self._get_box()
@@ -157,6 +159,11 @@ class LeafletFinder:
         """
         self._cache = {}
         self._output_leaflet_indices
+        if self._update_TopologyAttr:
+            self.atomgroup.universe.add_TopologyAttr("leaflet")
+            for i, residues in enumerate(self.leaflet_residues):
+                for residue in residues:
+                    residue.leaflet = i
 
     def write_selection(self, filename, mode="w", format=None, **kwargs):
         """Write selections for the leaflets to *filename*.

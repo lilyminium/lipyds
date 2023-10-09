@@ -9,8 +9,11 @@ from MDAnalysis.analysis import distances as mdadist
 def compute_surface_normals(surface, global_normal=[0, 0, 1]):
     surface.compute_normals(point_normals=True, inplace=True)
     average = surface.point_normals.mean(axis=0)
-    if np.dot(global_normal, average) < 0:  # obtuse
-        surface.flip_normals()
+    average_norm = np.linalg.norm(average)
+    average /= average_norm
+    angle_difference = np.dot(global_normal, average)
+    if angle_difference < 0:  # obtuse
+        surface["Normals"] = -surface.point_normals
 
 
 def compute_distances_between_surfaces(target, reference, box=None, vector_length=100):

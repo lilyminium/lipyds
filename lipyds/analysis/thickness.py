@@ -1,6 +1,7 @@
 from typing import Union, Optional, Dict, Any
 from MDAnalysis.core.universe import Universe
 from MDAnalysis.core.groups import AtomGroup
+from MDAnalysis.lib import distances
 
 from scipy import interpolate as spinterp
 import numpy as np
@@ -26,7 +27,7 @@ class MembraneThickness(GriddedBilayerAnalysisBase):
     """
 
     def __init__(self, *args,
-                 interpolator=spinterp.CloughTocher2DInterpolator,
+                 interpolator=spinterp.LinearNDInterpolator,
                  **kwargs):
         super().__init__(*args, **kwargs)
         if not isinstance(interpolator, type):
@@ -46,8 +47,11 @@ class MembraneThickness(GriddedBilayerAnalysisBase):
         frame = self._frame_index
         for i, bilayer in enumerate(self.bilayers):
             points, thickness = bilayer.compute_thickness()[:bilayer.middle.n_points]
+            points = distances.apply_PBC(points, bilayer.box)
+
             mask = ~np.isnan(thickness)
             xy = points[:, self._axes]
+            # print(xy[mask], thickness[mask])
             interpolator = self.interpolator(xy[mask], thickness[mask])
             interpolated = interpolator(self._xx, self._yy)
             self.results.interpolated_thicknesses[i, frame] = interpolated.T
