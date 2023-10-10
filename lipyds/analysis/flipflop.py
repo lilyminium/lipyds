@@ -93,9 +93,15 @@ class LipidFlipFlop(LeafletAnalysisBase):
             (self.n_frames, self.n_residues), dtype=int
         ) * self.inter_i
 
-    def _get_capped_distances(self, atomgroup: AtomGroup) -> ArrayLike:
+    def _get_capped_distances(
+            self,
+            atomgroup: AtomGroup,
+            coordinates=None,
+        ) -> ArrayLike:
+        if coordinates is None:
+            coordinates = self._first_atoms.positions
         pairs, distances = capped_distance(
-            self._first_atoms.positions,
+            coordinates,
             atomgroup.positions,
             box=self.get_box(),
             max_cutoff=self.cutoff,
@@ -111,22 +117,26 @@ class LipidFlipFlop(LeafletAnalysisBase):
         nearest_index = pairs[pairs[:, 0] == i][:, 1][0]
         coords = coordinates[nearest_index]
         center = self._first_atoms[i].position
-        # print(coords.shape)
-        # print(center)
-        # print(resindices[relevant])
-        # print(self.get_box()[:3])
-        # return mean_unwrap_around(coords, center, resindices[relevant], self.get_box()[:3])
         return coords
 
     def _single_frame(self):
         row = self.results.flipflop_leaflet[self._frame_index]
         upper_ag = self.leaflet_atomgroups[0]
         lower_ag = self.leaflet_atomgroups[1]
-        lower_pairs = self._get_capped_distances(lower_ag)
-        upper_pairs = self._get_capped_distances(upper_ag)
+        centers = self._first_atoms.positions
+        coordinates = get_centers_by_residue(
+            self.selection,
+            centers,
+            box=self.box,
+        )
+        lower_pairs = self._get_capped_distances(lower_ag, coordinates)
+        upper_pairs = self._get_capped_distances(upper_ag, coordinates)
 
         for i in range(self.n_residues):
-            if i not in lower_pairs[:, 0]:
+            if i not in lower_pairs[:, 0] and i not in upper_pairs[:, 0]:
+                row[i] = self.inter_i
+                continue
+            elif i not in lower_pairs[:, 0]:
                 row[i] = self.upper_i
                 continue
             elif i not in upper_pairs[:, 0]:
@@ -144,20 +154,21 @@ class LipidFlipFlop(LeafletAnalysisBase):
             # lower_coords = self._get_unwrapped_coordinates(i, lower_pairs,
             #                                                lower_ag.resindices,
             #                                                lower_ag.positions)
-            central_coord = self._first_atoms[i].position
-            central_coord[:2] = 0
-            upper_coords[:2] = 0
-            lower_coords[:2] = 0
+            central_coord = coordinates[i]
+            # central_coord[:2] = 0
+            # upper_coords[:2] = 0
+            # lower_coords[:2] = 0
 
-            upper_dist = distance_array(upper_coords, central_coord, box=self.box).mean(axis=0)[-1]
-            lower_dist = distance_array(lower_coords, central_coord, box=self.box).mean(axis=0)[-1]
+            upper_dist = distance_array(upper_coords, central_coord, box=self.box).min()
+            lower_dist = distance_array(lower_coords, central_coord, box=self.box).min()
 
-            if upper_dist <= self.leaflet_width:
+            if upper_dist < lower_dist and upper_dist <= self.leaflet_width:
                 row[i] = self.upper_i
-            elif lower_dist <= self.leaflet_width:
+            elif lower_dist < upper_dist and lower_dist <= self.leaflet_width:
                 row[i] = self.lower_i
             else:
                 row[i] = self.inter_i
+
 
     def _conclude(self):
         self.results.flips = np.zeros(self.n_residues, dtype=int)
