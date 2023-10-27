@@ -21,10 +21,10 @@ jobs:
     strategy:
       matrix:
         os: [macOS-latest, ubuntu-latest]  # , windows-latest
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.9", "3.10", "3.11"]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
 
     - name: Additional info about the build
       shell: bash
@@ -39,11 +39,15 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         environment-file: devtools/conda-envs/test_env.yaml
+        add-pip-as-python-dependency: true
+        architecture: x64
 
+        miniforge-variant: Mambaforge
+        use-mamba: true
         channels: conda-forge,defaults
 
         activate-environment: test
-        auto-update-conda: false
+        auto-update-conda: true
         auto-activate-base: false
         show-channel-urls: true
 
