@@ -1,6 +1,5 @@
 
-from typing import Union, Dict, Any, Optional
-from typing_extensions import Literal
+from typing import Union, Dict, Any, Optional, Literal
 
 import logging
 
@@ -131,6 +130,9 @@ class LeafletAnalysisBase(AnalysisBase):
         self.n_residues = len(self.residues)
         self.ids = getattr(self.residues, group_by_attr)
         self.unique_ids = np.unique(self.ids)
+        self._unique_id_to_index = {
+            rid: i for i, rid in enumerate(self.unique_ids)
+        }
         self.id_to_indices = {x: np.where(self.ids == x)[0]
                               for x in self.unique_ids}
 
