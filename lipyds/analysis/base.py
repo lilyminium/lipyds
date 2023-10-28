@@ -133,6 +133,9 @@ class LeafletAnalysisBase(AnalysisBase):
         self.unique_ids = np.unique(self.ids)
         self.id_to_indices = {x: np.where(self.ids == x)[0]
                               for x in self.unique_ids}
+        self._unique_id_to_index = {
+            rid: i for i, rid in enumerate(self.unique_ids)
+        }
 
         # set up leafletfinder
         if leafletfinder is None:

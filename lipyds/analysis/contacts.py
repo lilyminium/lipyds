@@ -1,7 +1,7 @@
 import typing
 
 import MDAnalysis as mda
-from MDAnalysis.lib.distances import self_distance_array
+from MDAnalysis.lib.distances import self_capped_distance
 import numpy as np
 
 from .base import LeafletAnalysisBase
@@ -131,7 +131,7 @@ class ContactFraction(LeafletAnalysisBase):
         for leaflet_index, residues in enumerate(self.leaflet_residues):
             atomgroup = residues.atoms
             residues_ids = getattr(residues, self.group_by_attr)
-            for id_index, rid in self._unique_id_to_index.items():
+            for rid, id_index in self._unique_id_to_index.items():
                 count = np.sum(residues_ids == rid)
                 self.results.group_counts_over_time[
                     leaflet_index,
@@ -140,9 +140,11 @@ class ContactFraction(LeafletAnalysisBase):
                 ] += count
 
             # get all contacts
-            left_atom_indices, right_atom_indices = self_distance_array(
+            left_atom_indices, right_atom_indices = self_capped_distance(
                 atomgroup.positions,
-                box=self.box
+                self.cutoff,
+                box=self.box,
+                return_distances=False,
             ).T
             left_resindices = atomgroup[left_atom_indices].resindices
             right_resindices = atomgroup[right_atom_indices].resindices
@@ -204,18 +206,19 @@ class ContactFraction(LeafletAnalysisBase):
 
         self.results.group_fractions = (
             self.results.group_counts_over_time.sum(axis=-1)
-            / self.results.total_counts_over_time.sum(axis=-1)
+            / self.results.total_counts_over_time.sum(axis=-1)[:, None]
         )
-        self.expected_contact_probability = np.einsum(
+        self.results.expected_contact_probability = np.einsum(
             "ij,il->ijl",
-            self.result.group_fractions,
-            self.result.group_fractions
+            self.results.group_fractions,
+            self.results.group_fractions
         )
-        self.observed_contact_probability = (
+
+        self.results.observed_contact_probability = (
             self.results.contact_counts_over_time.sum(axis=-1)
             / self.results.total_observed_contacts_over_time.sum(
                 axis=-1
-            )[None, :, :]
+            )[:, None, None]
         )
         self.results.contact_fractions = (
             self.results.observed_contact_probability

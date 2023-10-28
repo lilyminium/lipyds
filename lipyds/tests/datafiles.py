@@ -27,5 +27,7 @@ DDAT_POPC_TPR = resource_filename(__name__, "data/dDAT_POPC-CHOL_r1_nowater.tpr"
 DDAT_POPC_XTC = resource_filename(__name__, "data/dDAT_POPC-CHOL_r1_10ns.xtc")
 SURFACE_POINTS = resource_filename(__name__, "data/surface_points.dat")
 
+TOY_MIXED_SEGMENTED_BILAYER_RES2 = resource_filename(__name__, "data/mixed-segmented-bilayer_res2.pdb")
+
 # This should be the last line: clean up namespace
 del resource_filename
