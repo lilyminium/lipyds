@@ -14,7 +14,7 @@ Classes
 
 import abc
 import warnings
-from typing import Optional, List
+import typing
 
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.analysis.distances import contact_matrix
@@ -27,7 +27,7 @@ from ..lib.mdautils import (get_centers_by_residue, get_orientations,
 
 class GroupingMethod(abc.ABC):
     def __init__(self, headgroups: AtomGroup,
-                 tailgroups: Optional[AtomGroup]=None,
+                 tailgroups: typing.Optional[AtomGroup]=None,
                  cutoff: float=15.0, pbc: bool=False):
         self.headgroups = headgroups
         if tailgroups is None:
@@ -42,15 +42,15 @@ class GroupingMethod(abc.ABC):
             self.get_box = lambda: None
 
     @abc.abstractmethod
-    def run(self, **kwargs) -> List[List[int]]:
+    def run(self, **kwargs) -> list[list[int]]:
         raise NotImplementedError()
 
 class GraphMethod(GroupingMethod):
 
     def __init__(self, headgroups: AtomGroup,
-                 tailgroups: Optional[AtomGroup]=None,
+                 tailgroups: typing.Optional[AtomGroup]=None,
                  cutoff: float=15.0, pbc: bool=False,
-                 sparse: Optional[bool]=None, **kwargs):
+                 sparse: typing.Optional[bool]=None, **kwargs):
         try:
             import networkx as nx
         except ImportError:
@@ -63,7 +63,7 @@ class GraphMethod(GroupingMethod):
         self.sparse = sparse
         self.returntype = "numpy" if not sparse else "sparse"
 
-    def run(self, **kwargs) -> List[List[int]]:
+    def run(self, **kwargs) -> list[list[int]]:
         import networkx as nx
         box = self.get_box()
         coordinates = get_centers_by_residue(self.headgroups, box=box)
@@ -88,9 +88,9 @@ class GraphMethod(GroupingMethod):
 
 class SpectralClusteringMethod(GroupingMethod):
     def __init__(self, headgroups: AtomGroup,
-                 tailgroups: Optional[AtomGroup]=None,
+                 tailgroups: typing.Optional[AtomGroup]=None,
                  cutoff: float=30.0, pbc: bool=False,
-                 n_leaflets: int=2, delta: Optional[float]=20,
+                 n_leaflets: int=2, delta: typing.Optional[float]=20,
                  cosine_threshold: float=0.8,
                  angle_factor: float=1, **kwargs):
         
@@ -134,7 +134,7 @@ class SpectralClusteringMethod(GroupingMethod):
         gau[mask] *= cos[mask]
         return gau
 
-    def run(self, **kwargs) -> List[List[int]]:
+    def run(self, **kwargs) -> list[list[int]]:
         kernel = self._get_kernel()
         data_labels = self.predictor.fit_predict(kernel)
         ix = np.argsort(data_labels)
