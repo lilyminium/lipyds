@@ -11,7 +11,7 @@ Classes
     :members:
 
 """
-from typing import Union, Optional, Dict, Any
+from typing import Union, Optional, dict, Any
 from MDAnalysis.core.universe import Universe
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.lib.distances import self_capped_distance
@@ -62,7 +62,7 @@ class AreaPerLipid(BilayerAnalysisBase):
                  select: Optional[str] = "not protein",
                  select_other: Optional[str] = "protein",
                  leafletfinder: Optional[LeafletFinder] = None,
-                 leaflet_kwargs: Dict[str, Any] = {},
+                 leaflet_kwargs: dict[str, Any] = {},
                  group_by_attr: str = "resnames",
                  pbc: bool = True, update_leaflet_step: int = 1,
                  normal_axis=[0, 0, 1],
