@@ -12,18 +12,11 @@ class ContactFraction(LeafletAnalysisBase):
     Calculate the fraction of contacts between groups of residues in a bilayer.
 
     In a leaflet comprising N lipids with :math:`n_A` molecules of lipid group A,
-    the proportion (or ``group_fraction`` of A is:
+    the proportion (or ``expected_contact_probability`` of A is:
 
     .. math::
 
         Pr(A) = \\frac{n_A}{N}
-
-    The expected probability (or ``expected_contact_probability``) of contacts
-    between lipid group A and lipid group B given complete mixing is:
-
-    .. math::
-
-        Pr(A \cap B) = Pr(A) Pr(B)
 
     The observed fraction (or ``observed_contact_probability``) of contacts
     between lipid group A and lipid group B is the ratio of observed contacts
@@ -64,13 +57,9 @@ class ContactFraction(LeafletAnalysisBase):
     results.total_counts_over_time : np.ndarray
         The total number of residues in each leaflet over time.
         The shape is (n_leaflets, n_frames).
-    results.group_fractions_over_time : np.ndarray
-        The fraction of residues in each group over time.
-        The shape is (n_leaflets, n_groups, n_frames).
     results.expected_contact_probability_over_time : np.ndarray
-        The expected probability of contact between each pair of groups
-        over time.
-        The shape is (n_leaflets, n_groups, n_groups, n_frames).
+        The expected proportion of contacts for each group.
+        The shape is (n_leaflets, n_groups, n_frames).
     results.total_observed_contacts_over_time : np.ndarray
         The total number of observed contacts in each leaflet over time.
         The shape is (n_leaflets, n_frames).
@@ -82,11 +71,6 @@ class ContactFraction(LeafletAnalysisBase):
         The fraction of observed contacts between each pair of groups
         over time.
         The shape is (n_leaflets, n_groups, n_groups, n_frames).
-    results.group_fractions : np.ndarray
-        The fraction of residues in each group.
-        Unlike ``results.group_fractions_over_time``, this is not per-frame.
-        The counts here are *summed* over each frame.
-        The shape is (n_leaflets, n_groups).
     results.expected_contact_probability : np.ndarray
         The expected probability of contact between each pair of groups.
         Unlike ``results.expected_contact_probability_over_time``, this is not per-frame.
@@ -182,14 +166,9 @@ class ContactFraction(LeafletAnalysisBase):
         self.results.total_counts_over_time = (
             self.results.group_counts_over_time.sum(axis=1)
         )
-        self.results.group_fractions_over_time = (
+        self.results.expected_contact_probability_over_time = (
             self.results.group_counts_over_time
             / self.results.total_counts_over_time[:, None]
-        )
-        self.results.expected_contact_probability_over_time = np.einsum(
-            "ijk,ilk->ijlk",
-            self.results.group_fractions_over_time,
-            self.results.group_fractions_over_time
         )
         self.results.total_observed_contacts_over_time = (
             self.results.contact_counts_over_time.sum(axis=(1, 2)) / 2
@@ -204,14 +183,9 @@ class ContactFraction(LeafletAnalysisBase):
             / self.results.expected_contact_probability_over_time
         )
 
-        self.results.group_fractions = (
+        self.results.expected_contact_probability = (
             self.results.group_counts_over_time.sum(axis=-1)
             / self.results.total_counts_over_time.sum(axis=-1)[:, None]
-        )
-        self.results.expected_contact_probability = np.einsum(
-            "ij,il->ijl",
-            self.results.group_fractions,
-            self.results.group_fractions
         )
 
         self.results.observed_contact_probability = (
