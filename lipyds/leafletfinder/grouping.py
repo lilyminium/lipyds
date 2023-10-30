@@ -14,7 +14,7 @@ Classes
 
 import abc
 import warnings
-from typing import Optional, List
+import typing
 
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.analysis.distances import contact_matrix
@@ -26,31 +26,28 @@ from ..lib.mdautils import (get_centers_by_residue, get_orientations,
 
 
 class GroupingMethod(abc.ABC):
-    def __init__(self, headgroups: AtomGroup,
-                 tailgroups: Optional[AtomGroup]=None,
-                 cutoff: float=15.0, pbc: bool=False):
-        self.headgroups = headgroups
-        if tailgroups is None:
-            tailgroups = self.headgroups.residues.atoms - headgroups
-        self.tailgroups = tailgroups
-        self.n_residues = len(self.headgroups.residues)
-        self.cutoff = cutoff
-        self.pbc = pbc
-        if pbc:
-            self.get_box = lambda: self.headgroups.universe.dimensions
-        else:
-            self.get_box = lambda: None
+    def __init__(self, leafletfinder):
+        self._leafletfinder = leafletfinder
 
     @abc.abstractmethod
-    def run(self, **kwargs) -> List[List[int]]:
+    def run(self, **kwargs) -> list[list[int]]:
+        """
+        This method should return a list of lists of indices.
+        Each list contains the relative indices of the residues in a leaflet.
+        """
         raise NotImplementedError()
+    
+    @property
+    def leafletfinder(self):
+        return self._leafletfinder
+    
+    @property
+    def _unwrapped_headgroup_centers(self):
+        return self.leafletfinder.lipids.unwrapped_headgroup_centers
 
 class GraphMethod(GroupingMethod):
 
-    def __init__(self, headgroups: AtomGroup,
-                 tailgroups: Optional[AtomGroup]=None,
-                 cutoff: float=15.0, pbc: bool=False,
-                 sparse: Optional[bool]=None, **kwargs):
+    def __init__(self, leafletfinder, sparse: bool = False,):
         try:
             import networkx as nx
         except ImportError:
@@ -58,42 +55,54 @@ class GraphMethod(GroupingMethod):
                             "but is not installed. Install it with "
                             "`conda install networkx` or "
                             "`pip install networkx`.") from None
-        super().__init__(headgroups, tailgroups=tailgroups,
-                         cutoff=cutoff, pbc=pbc)
+        super().__init__(leafletfinder)
         self.sparse = sparse
         self.returntype = "numpy" if not sparse else "sparse"
 
-    def run(self, **kwargs) -> List[List[int]]:
+    def run(self, **kwargs) -> list[list[int]]:
         import networkx as nx
-        box = self.get_box()
-        coordinates = get_centers_by_residue(self.headgroups, box=box)
+
+        coordinates = self._unwrapped_headgroup_centers
         try:
-            adj = contact_matrix(coordinates, cutoff=self.cutoff, box=box,
-                                returntype=self.returntype)
+            adj = contact_matrix(
+                coordinates,
+                cutoff=self.leafletfinder.cutoff,
+                box=self.leafletfinder.box,
+                returntype=self.returntype,
+            )
         except ValueError as exc:
-            if sparse is None:
+            if self.sparse is None:
                 warnings.warn("NxN matrix is too big. Switching to sparse "
                             "matrix method")
-                adj = contact_matrix(coordinates, cutoff=cutoff, box=box,
-                                    returntype="sparse")
-            elif sparse is False:
+                adj = contact_matrix(
+                    coordinates,
+                    cutoff=self.leafletfinder.cutoff,
+                    box=self.leafletfinder.box,
+                    returntype="sparse",
+                )
+            elif self.sparse is False:
                 raise ValueError("NxN matrix is too big. "
                                 "Use `sparse=True`") from None
             else:
                 raise exc 
         graph = nx.Graph(adj)
-        groups = [list(c) for c in nx.connected_components(graph)]
+        groups = sorted(
+            [list(c) for c in nx.connected_components(graph)],
+            key=len,
+            reverse=True,
+        )[:self.leafletfinder.n_leaflets]
         return groups
 
 
 class SpectralClusteringMethod(GroupingMethod):
-    def __init__(self, headgroups: AtomGroup,
-                 tailgroups: Optional[AtomGroup]=None,
-                 cutoff: float=30.0, pbc: bool=False,
-                 n_leaflets: int=2, delta: Optional[float]=20,
-                 cosine_threshold: float=0.8,
-                 angle_factor: float=1, **kwargs):
-        
+    def __init__(
+        self,
+        leafletfinder,
+        delta: typing.Optional[float] = 20,
+        cosine_threshold: float = 0.8,
+        angle_factor: float = 1,
+        **kwargs
+    ):
         try:
             import sklearn.cluster as skc
         except ImportError:
@@ -102,27 +111,34 @@ class SpectralClusteringMethod(GroupingMethod):
                             'install scikit-learn` or `pip install '
                             'scikit-learn`.') from None
 
-        super().__init__(headgroups, tailgroups=tailgroups,
-                         cutoff=cutoff, pbc=pbc)
+        super().__init__(leafletfinder)
         self.delta = delta
         self.cosine_threshold = cosine_threshold
         self.angle_factor = angle_factor
-        self.predictor = skc.SpectralClustering(n_clusters=n_leaflets,
-                                                affinity="precomputed",
-                                                **kwargs)
+        self.predictor = skc.SpectralClustering(
+            n_clusters=self.leafletfinder.n_leaflets,
+            affinity="precomputed",
+            **kwargs,
+        )
     
     def _get_kernel(self) -> ArrayLike:
-        box = self.get_box()
+        coordinates = self._unwrapped_headgroup_centers
+        orientations = np.array([
+            lipid.normalized_orientation
+            for lipid in self._leafletfinder.lipids
+        ])
         
-        coordinates = get_centers_by_residue(self.headgroups, box=box)
-        orientations = get_orientations(self.headgroups,
-                                        tailgroups=self.tailgroups,
-                                        box=box, normalize=True,
-                                        headgroup_centers=coordinates)
-        dist_mat = get_distances_with_projection(coordinates, orientations,
-                                                 self.cutoff, box=box,
-                                                 angle_factor=self.angle_factor)
-        delta = self.delta or np.max(dist_mat[dist_mat < self.cutoff*2]) / 3
+        dist_mat = get_distances_with_projection(
+            coordinates,
+            orientations,
+            self.leafletfinder.cutoff,
+            box=self.leafletfinder.box,
+            angle_factor=self.angle_factor,
+        )
+        delta = (
+            self.delta
+            or np.max(dist_mat[dist_mat < self.leafletfinder.cutoff * 2]) / 3
+        )
 
         gau = np.exp(- dist_mat ** 2 / (2. * delta ** 2))
         # reasonably acute/obtuse angles are acute/obtuse anough
@@ -134,7 +150,7 @@ class SpectralClusteringMethod(GroupingMethod):
         gau[mask] *= cos[mask]
         return gau
 
-    def run(self, **kwargs) -> List[List[int]]:
+    def run(self, **kwargs) -> list[list[int]]:
         kernel = self._get_kernel()
         data_labels = self.predictor.fit_predict(kernel)
         ix = np.argsort(data_labels)

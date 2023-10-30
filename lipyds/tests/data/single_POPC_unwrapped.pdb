@@ -1,0 +1,15 @@
+TITLE     MDANALYSIS FRAME 0: Created by PDBWriter
+CRYST1  174.729  174.729  171.117  90.00  90.00  90.00 P 1           1
+ATOM      1  NC3 POPCX 812       1.321   9.080  11.816  1.00  0.00      SYST    
+ATOM      2  PO4 POPCX 812      -0.029   5.100   9.266  1.00  0.00      SYST    
+ATOM      3  GL1 POPCX 812       0.271   2.420   5.216  1.00  0.00      SYST    
+ATOM      4  GL2 POPCX 812       2.181  -0.240   4.196  1.00  0.00      SYST    
+ATOM      5  C1A POPCX 812      -2.599   2.280   3.026  1.00  0.00      SYST    
+ATOM      6  D2A POPCX 812      -5.989   0.960  -0.204  1.00  0.00      SYST    
+ATOM      7  C3A POPCX 812      -5.939  -0.800  -3.104  1.00  0.00      SYST    
+ATOM      8  C4A POPCX 812      -5.609  -2.310  -6.924  1.00  0.00      SYST    
+ATOM      9  C1B POPCX 812       2.941  -2.990   0.716  1.00  0.00      SYST    
+ATOM     10  C2B POPCX 812       3.641  -2.940  -4.254  1.00  0.00      SYST    
+ATOM     11  C3B POPCX 812       4.011  -4.150  -8.194  1.00  0.00      SYST    
+ATOM     12  C4B POPCX 812       5.801  -6.410 -11.554  1.00  0.00      SYST    
+END

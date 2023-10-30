@@ -1,3 +1,4 @@
+import importlib_resources
 
 __all__ = [
     "Martini_double_membrane",  # for testing leaflet finder more
@@ -10,22 +11,26 @@ __all__ = [
     "DDAT_POPC_TPR",
     "DDAT_POPC_XTC",
     "SURFACE_POINTS",
+
+    "SINGLE_POPC_UNWRAPPED",
+    "SINGLE_POPC_WRAPPED",
 ]
 
-from pkg_resources import resource_filename
 
-Martini_double_membrane = resource_filename(__name__, 'data/martini_double_bilayer.gro')
-DPPC_vesicle_only = resource_filename(__name__, 'data/fatslim_dppc_vesicle.pdb')
-DPPC_vesicle_plus = resource_filename(__name__, 'data/fatslim_dppc_vesicle_plus.gro')
+data_directory = importlib_resources.files("lipyds") / "tests" / "data"
 
-NEURONAL_GLYT2 = resource_filename(__name__, 'data/glyt2_neuronal.gro')
-NEURONAL_DDAT = resource_filename(__name__, 'data/ddat_neuronal.gro')
-NEURONAL_HDAT = resource_filename(__name__, 'data/hdat_neuronal.gro')
-NEURONAL_HSERT = resource_filename(__name__, 'data/hsert_neuronal.gro')
+Martini_double_membrane = data_directory / "martini_double_bilayer.gro"
+DPPC_vesicle_only = data_directory / "fatslim_dppc_vesicle.pdb"
+DPPC_vesicle_plus = data_directory / "fatslim_dppc_vesicle_plus.gro"
 
-DDAT_POPC_TPR = resource_filename(__name__, "data/dDAT_POPC-CHOL_r1_nowater.tpr")
-DDAT_POPC_XTC = resource_filename(__name__, "data/dDAT_POPC-CHOL_r1_10ns.xtc")
-SURFACE_POINTS = resource_filename(__name__, "data/surface_points.dat")
+NEURONAL_GLYT2 = data_directory / "glyt2_neuronal.gro"
+NEURONAL_DDAT = data_directory / "ddat_neuronal.gro"
+NEURONAL_HDAT = data_directory / "hdat_neuronal.gro"
+NEURONAL_HSERT = data_directory / "hsert_neuronal.gro"
 
-# This should be the last line: clean up namespace
-del resource_filename
+DDAT_POPC_TPR = data_directory / "dDAT_POPC-CHOL_r1_nowater.tpr"
+DDAT_POPC_XTC = data_directory / "dDAT_POPC-CHOL_r1_10ns.xtc"
+SURFACE_POINTS = data_directory / "surface_points.dat"
+
+SINGLE_POPC_UNWRAPPED = data_directory / "single_POPC_unwrapped.pdb"
+SINGLE_POPC_WRAPPED = data_directory / "single_POPC_wrapped.pdb"

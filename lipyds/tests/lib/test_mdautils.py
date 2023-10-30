@@ -43,7 +43,8 @@ class TestUnwrap:
     )
     def test_unwrap_small_ortho(self, center, unwrapped):
         """
-
+        Test unwrapping the following coordinates:
+        
             ------------------
             |                |
             |                |
