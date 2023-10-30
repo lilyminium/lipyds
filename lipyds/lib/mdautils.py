@@ -9,7 +9,7 @@ from MDAnalysis.lib.mdamath import norm
 
 # from .cutils import unwrap_around, mean_unwrap_around, calc_cosine_similarity, get_centers_by_resindices, get_centers_around_first_by_resindices
 
-from .cutils import project_distances, mean_unwrap_around, unwrap_around
+from .cutils import project_distances, mean_unwrap_around, unwrap_around, unwrap_coordinates_around_center
 
 
 def augment_coordinates(coordinates: ArrayLike,
@@ -30,16 +30,18 @@ def augment_coordinates(coordinates: ArrayLike,
     return output
 
 
-def unwrap_coordinates(coordinates: ArrayLike,
-                       center: Optional[ArrayLike] = None,
-                       box: Optional[ArrayLike] = None) -> ArrayLike:
+def unwrap_coordinates(
+    coordinates: ArrayLike,
+    center: Optional[ArrayLike] = None,
+    box: Optional[ArrayLike] = None,
+) -> ArrayLike:
     coordinates = np.asarray(coordinates, dtype=np.float32).reshape((-1, 3))
     if box is None:
         return coordinates
     if center is None:
         center = coordinates[0]
-    output = np.empty((coordinates.shape[0], 3), dtype=np.float32)
-    unwrap_around(coordinates, center, box, output)
+    center = np.asarray(center, dtype=np.float32).reshape((3,))
+    output = unwrap_coordinates_around_center(coordinates, center, box)
     return output
 
 

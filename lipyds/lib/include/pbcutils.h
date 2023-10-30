@@ -185,7 +185,7 @@ static void _single_mean_unwrap_around_ortho(coordinate *coords, int numcoords,
         unit_image[i] = center[i];
         output[i] = 0;
     }
-    // minimum_image_ortho(unit_image, box, inverse_box);
+    minimum_image_ortho(unit_image, box, inverse_box);
 
     for (i = 0; i < 3; i++)
     {

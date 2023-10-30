@@ -4,6 +4,8 @@ cimport cython
 import numpy as np
 cimport numpy as np
 
+from libc.math cimport fabs
+
 
 cdef extern from "math.h":
     bint isnan(double x)
@@ -21,6 +23,8 @@ cdef extern from "pbcutils.h":
     void _unwrap_around_ortho(coordinate *coords, int numcoords, coordinate center, float *box, coordinate *output)
     void _unwrap_around_triclinic(coordinate *coords, int numcoords, coordinate center, float *box, coordinate *output)
     void _calc_cosine_similarity(coordinate a, coordinate *bs, int n_bs, double *cosines)
+    void minimum_image_ortho(double* x, float* box, float* inverse_box)
+    void minimum_image_triclinic(double* dx, float* box)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -171,3 +175,112 @@ def calc_cosine_similarity(np.ndarray vector_a, np.ndarray vectors):
                             <coordinate*> vectors.data,
                             n_bs, <double*> output.data)
     return np.asarray(output)
+
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def unwrap_coordinates_around_center(
+    np.ndarray coordinates,
+    np.ndarray center,
+    np.ndarray box,
+):
+    """Move all atoms in a single molecule so that bonds don't split over
+    images.
+
+    This function is most useful when atoms have been packed into the primary
+    unit cell, causing breaks mid molecule, with the molecule then appearing
+    on either side of the unit cell. This is problematic for operations
+    such as calculating the center of mass of the molecule. ::
+
+       +-----------+     +-----------+
+       |           |     |           |
+       | 6       3 |     |         3 | 6
+       | !       ! |     |         ! | !
+       |-5-8   1-2-| ->  |       1-2-|-5-8
+       | !       ! |     |         ! | !
+       | 7       4 |     |         4 | 7
+       |           |     |           |
+       +-----------+     +-----------+
+
+
+    Parameters
+    ----------
+    coordinates: :class:`numpy.ndarray`
+        This array should be of shape (n_atoms, 3)
+    center: :class:`numpy.ndarray`
+        This array should be of shape(3,)
+    box: :class:`numpy.ndarray`
+        This should be of shape (6,)
+
+    Returns
+    -------
+    unwrapped: numpy.ndarray
+        The unwrapped atom coordinates.
+
+
+
+    See Also
+    --------
+    :meth:`MDAnalysis.core.groups.AtomGroup.unwrap`
+
+
+    """
+    cdef np.intp_t i, j, natoms, atom_i
+    cdef float[:, :] unwrapped
+    cdef bint ortho
+    cdef float[:, :] tri_box
+    cdef float half_box[3]
+    cdef float inverse_box[3]
+    cdef double vec[3]
+    cdef float box_[6]
+    cdef bint is_unwrapped
+
+
+    natoms = coordinates.shape[0]
+    # Nothing to do for less than 2 atoms
+    if natoms < 2:
+        return np.array(coordinates)
+
+    for i in range(3):
+        half_box[i] = 0.5 * box[i]
+        box_[i] = box[i]
+
+    ortho = True
+    for i in range(3, 6):
+        box_[i] = box[i]
+        if box[i] != 90.0:
+            ortho = False
+
+    if ortho:
+        # If atomgroup is already unwrapped, bail out
+        is_unwrapped = True
+        for i in range(1, natoms):
+            for j in range(3):
+                if fabs(coordinates[i, j] - center[j]) >= half_box[j]:
+                    is_unwrapped = False
+                    break
+            if not is_unwrapped:
+                break
+        if is_unwrapped:
+            return np.array(coordinates)
+        for i in range(3):
+            inverse_box[i] = 1.0 / box[i]
+    else:
+        from .mdamath import triclinic_vectors
+        tri_box = triclinic_vectors(box)
+
+    unwrapped = np.zeros((natoms, 3), dtype=np.float32)
+    for atom_i in range(natoms):
+        for i in range(3):
+            # Draw vector from center to atom
+            vec[i] = coordinates[atom_i, i] - center[i]
+            # Apply periodic boundary conditions to this vector
+            if ortho:
+                minimum_image_ortho(&vec[0], &box_[0], &inverse_box[0])
+            else:
+                minimum_image_triclinic(&vec[0], &tri_box[0, 0])
+            # Then define position of atom based on this vector
+            for i in range(3):
+                unwrapped[atom_i, i] = center[i] + vec[i]
+    return np.array(unwrapped)
