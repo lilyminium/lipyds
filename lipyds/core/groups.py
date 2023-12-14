@@ -119,35 +119,38 @@ class Lipid:
         return lipids
         
     @property
-    def headgroup(self):
+    def headgroup(self) -> mda.core.groups.AtomGroup:
         return self._headgroup
     
     @property
-    def tailgroup(self):
+    def tailgroup(self) -> mda.core.groups.AtomGroup:
         return self._tailgroup
 
     @property
-    def residue(self):
+    def residue(self) -> mda.core.groups.Residue:
         return self._residue
     
     @property
-    def universe(self):
+    def universe(self) -> mda.core.universe.Universe:
         return self.residue.universe
     
     @property
-    def residue_positions(self):
+    def residue_positions(self) -> np.ndarray:
         return self.residue.atoms.positions
 
     @property
-    def headgroup_positions(self):
+    def headgroup_positions(self) -> np.ndarray:
+        """The absolute headgroup positions of the lipid"""
         return self._positions[self._relative_headgroup_indices]
 
     @property
-    def tailgroup_positions(self):
+    def tailgroup_positions(self) -> np.ndarray:
+        """The absolute tailgroup positions of the lipid"""
         return self._positions[self._relative_tailgroup_indices]
     
     @property
-    def unwrapped_residue_positions(self):
+    def unwrapped_residue_positions(self) -> np.ndarray:
+        """The unwrapped positions of the lipid"""
         if self._unwrapped_residue_positions_frame != self.universe.trajectory.frame:
             self._cache.pop("_unwrapped_residue_positions", None)
         return self._unwrapped_residue_positions
@@ -160,31 +163,47 @@ class Lipid:
     
     
     @property
-    def unwrapped_headgroup_positions(self):
+    def unwrapped_headgroup_positions(self) -> np.ndarray:
+        """The unwrapped headgroup positions of the lipid"""
         return self._unwrapped_residue_positions[self._relative_headgroup_indices]
     
     @property
-    def unwrapped_tailgroup_positions(self):
+    def unwrapped_tailgroup_positions(self) -> np.ndarray:
+        """
+        The unwrapped tailgroup positions of the lipid,
+        unwrapped to the headgroup center.
+        """
         return self._unwrapped_residue_positions[self._relative_tailgroup_indices]
     
     @property
     def unwrapped_headgroup_center(self):
+        """The center of the headgroup atoms of the lipid"""
         if self.headgroup.n_atoms < 2:
             return self.unwrapped_headgroup_positions.reshape((3,))
         return np.mean(self.unwrapped_headgroup_positions, axis=0)
     
     @property
-    def unwrapped_tailgroup_center(self):
+    def unwrapped_tailgroup_center(self) -> np.ndarray:
+        """
+        The center of the tailgroup atoms of the lipid,
+        unwrapped to the headgroup center.
+        """
         if self.tailgroup.n_atoms < 2:
             return self.unwrapped_tailgroup_positions.reshape((3,))
         return np.mean(self.unwrapped_tailgroup_positions, axis=0)
     
     @property
-    def orientation(self):
+    def orientation(self) -> np.ndarray:
+        """The orientation vector of the lipid
+        
+        This is calculated from the center of the head
+        to the center of the tail.
+        """
         return self.unwrapped_tailgroup_center - self.unwrapped_headgroup_center
     
     @property
-    def normalized_orientation(self):
+    def normalized_orientation(self) -> np.ndarray:
+        """The normalized orientation vector of the lipid"""
         orientation = self.orientation
         return orientation / np.linalg.norm(orientation)
     
@@ -197,7 +216,7 @@ class Lipid:
             self._first_headgroup_atom.position,
             box=self.universe.dimensions,
         )
-        
+
 
 
 class LipidGroup:
@@ -208,7 +227,6 @@ class LipidGroup:
     ----------
     lipids: list[Lipid]
         The lipids in the group
-
 
 
     Attributes
@@ -259,23 +277,28 @@ class LipidGroup:
         self._universe = self._residues.universe
 
     @property
-    def lipids(self):
+    def lipids(self) -> np.ndarray[Lipid]:
+        """The lipids in the group"""
         return self._lipids
     
     @property
-    def residues(self):
+    def residues(self) -> mda.core.groups.ResidueGroup:
+        """The residues of the lipids in the group"""
         return self._residues
     
     @property
-    def universe(self):
+    def universe(self) -> mda.core.universe.Universe:
+        """The universe the lipids belong to"""
         return self._universe
     
     @property
-    def n_residues(self):
+    def n_residues(self) -> int:
+        """The number of residues in the group"""
         return self.residues.n_residues
 
     @property
-    def unwrapped_headgroup_centers(self):
+    def unwrapped_headgroup_centers(self) -> np.ndarray:
+        """The unwrapped headgroup center positions of the lipids in the group"""
         if self._unwrapped_residue_positions_frame != self.universe.trajectory.frame:
             self._cache.pop("_unwrapped_headgroup_centers", None)
         return self._unwrapped_headgroup_centers
