@@ -6,7 +6,7 @@ A toolkit for leaflet-based membrane analysis
 # Add imports here
 from .leafletfinder.leafletfinder import LeafletFinder
 # from .analysis import AreaPerLipid, LipidEnrichment, LipidFlipFlop
-from .analysis import AreaPerLipid, LipidTilt, MembraneThickness, ProjectedDisplacement, Curvature, LipidEnrichment
+# from .analysis import AreaPerLipid, LipidTilt, MembraneThickness, ProjectedDisplacement, Curvature, LipidEnrichment
 from .core.topologyattrs import *
 
 # Handle versioneer
