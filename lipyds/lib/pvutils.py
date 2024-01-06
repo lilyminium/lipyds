@@ -13,7 +13,8 @@ def compute_surface_normals(surface, global_normal=[0, 0, 1]):
     average /= average_norm
     angle_difference = np.dot(global_normal, average)
     if angle_difference < 0:  # obtuse
-        surface["Normals"] = -surface.point_normals
+        surface.point_data["Normals"] = -surface.point_normals
+    return surface.point_normals
 
 
 def compute_distances_between_surfaces(target, reference, box=None, vector_length=100):

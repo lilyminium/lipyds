@@ -2,6 +2,7 @@ import typing
 import MDAnalysis as mda
 import numpy as np
 
+
 from lipyds.lib.utils import cached_property
 
 class Lipid:
@@ -91,6 +92,14 @@ class Lipid:
 
         #: mda.core.groups.Atom: the first atom of the headgroup
         self._first_headgroup_atom = self._headgroup[0]
+        self._leaflet = None
+
+    def copy(self):
+        return type(self)(self.headgroup, self.tailgroup)
+
+    @property
+    def leaflet(self):
+        return self._leaflet
 
     @classmethod
     def from_atom_selections(
@@ -104,14 +113,14 @@ class Lipid:
     ) -> list["Lipid"]:
         headgroup_atoms = universe_or_atomgroup.select_atoms(select_headgroups)
         index_to_headgroup = {
-            ag.residue.resindex: ag
+            ag.residues[0].resindex: ag
             for ag in headgroup_atoms.split("residue")
         }
         index_to_tailgroup = {}
         if select_tailgroups is not None:
             tail_atoms = universe_or_atomgroup.select_atoms(select_tailgroups)
             for ag in tail_atoms.split("residue"):
-                index_to_tailgroup[ag.residue.resindex] = ag
+                index_to_tailgroup[ag.residues[0].resindex] = ag
         lipids = [
             cls(index_to_headgroup[i], index_to_tailgroup.get(i, None))
             for i in index_to_headgroup
@@ -271,10 +280,14 @@ class LipidGroup:
         self._cache = {}
         self._unwrapped_residue_positions_frame = -1
         self._lipids = np.array(lipids)
+
         self._residues = sum([
             lipid.residue for lipid in self._lipids
         ])
         self._universe = self._residues.universe
+
+    def __iter__(self):
+        return iter(self._lipids)
 
     @property
     def lipids(self) -> np.ndarray[Lipid]:
@@ -295,12 +308,20 @@ class LipidGroup:
     def n_residues(self) -> int:
         """The number of residues in the group"""
         return self.residues.n_residues
+    
+    def __len__(self):
+        return len(self.lipids)
+    
+    def _check_unwrapped_frame(self):
+        if self._unwrapped_residue_positions_frame != self.universe.trajectory.frame:
+            self._cache.pop("_unwrapped_headgroup_centers", None)
+            self._cache.pop("_normalized_orientations", None)
+            self._unwrapped_residue_positions_frame = self.universe.trajectory.frame
 
     @property
     def unwrapped_headgroup_centers(self) -> np.ndarray:
         """The unwrapped headgroup center positions of the lipids in the group"""
-        if self._unwrapped_residue_positions_frame != self.universe.trajectory.frame:
-            self._cache.pop("_unwrapped_headgroup_centers", None)
+        self._check_unwrapped_frame()
         return self._unwrapped_headgroup_centers
     
     @cached_property
@@ -310,7 +331,103 @@ class LipidGroup:
             for lipid in self.lipids
         ])
         return coordinates
+    
+    @property
+    def normalized_orientations(self) -> np.ndarray:
+        """The normalized orientations of the lipids in the group"""
+        self._check_unwrapped_frame()
+        return self._normalized_orientations
+    
+    @cached_property
+    def _normalized_orientations(self):
+        orientations = np.array([
+            lipid.normalized_orientation
+            for lipid in self.lipids
+        ])
+        return orientations
+    
+    def select_around_unwrapped_headgroup_centers(
+        self,
+        select: str = "all",
+        cutoff: float = 6,
+    ) -> mda.core.groups.AtomGroup:
+        """
+        Select atoms within distance ``cutoff``
+        of the unwrapped headgroup centers of the lipids in the group.
+        
+        Parameters
+        ----------
+        select: str
+            The selection string to select atoms
+        cutoff: float
+            The cutoff distance in Angstroms
+
+        Returns
+        -------
+        mda.core.groups.AtomGroup
+            The selected atoms within distance ``cutoff``
+        """
+        from MDAnalysis.lib.distances import capped_distance
+
+        ag = self.universe.select_atoms(select)
+
+        pairs = capped_distance(
+            self.unwrapped_headgroup_centers,
+            ag.positions,
+            max_cutoff=cutoff,
+            box=self.universe.dimensions,
+            return_distances=False,
+        )
+        atom_indices = np.unique(pairs[:, 1])
+        return ag[atom_indices]
+
 
 
 class Leaflet(LipidGroup):
-    ...
+    def __init__(
+        self, lipids: list[Lipid],
+        leaflet_index: int = -1,
+    ):
+        lipids = sorted(
+            lipids,
+            key=lambda lipid: lipid.residue.resindex,
+        )
+        super().__init__(lipids)
+        for lipid in self._lipids:
+            lipid._leaflet = self
+        self._leaflet_index = leaflet_index
+        self._bilayer = None
+
+class Bilayer:
+
+    def __iter__(self):
+        return iter(self._leaflets)
+
+    def __init__(
+        self,
+        leaflets: list[Leaflet],
+        sort_by: str = "z"
+    ):
+        self._cache = {}
+
+        if sort_by == "z":
+            z_avg = [
+                leaflet.unwrapped_headgroup_centers[:, 2].mean()
+                for leaflet in leaflets
+            ]
+            indices = np.argsort(z_avg)
+        else:
+            raise ValueError(
+                f"Invalid sort_by: {sort_by}. "
+                "Only 'z' is supported."
+            )
+        
+        leaflets = tuple(leaflets[i] for i in indices)
+
+
+        self._leaflets = tuple(leaflets)
+        self._universe = self._leaflets[0].universe
+        for i, leaflet in enumerate(self._leaflets):
+            leaflet._bilayer = self
+            leaflet._leaflet_index = i
+

@@ -1,11 +1,12 @@
 import MDAnalysis as mda
 import numpy as np
 
-from lipyds.core.groups import Lipid
+from lipyds.core.groups import Lipid, LipidGroup
 
 from lipyds.tests.datafiles import (
     SINGLE_POPC_UNWRAPPED,
     SINGLE_POPC_WRAPPED,
+    NEURONAL_DDAT,
 )
 
 class TestLipid:
@@ -15,8 +16,10 @@ class TestLipid:
 
         lipid = Lipid(headgroup)
         assert lipid.headgroup == headgroup
+        assert lipid.headgroup.n_atoms == 2
         assert lipid.tailgroup.n_atoms == 10
         assert lipid.residue == u.residues[0]
+        assert lipid.leaflet == -1
         assert lipid.universe is u
     
 
@@ -162,3 +165,18 @@ class TestLipid:
             unwrapped_positions2,
             atol=1e-3,
         )
+
+
+class TestLipidGroup:
+
+    def test_lipidgroup_creation_default(self):
+        u = mda.Universe(NEURONAL_DDAT)
+        lipids = LipidGroup.from_atom_selections(
+            u,
+            select_headgroups="name PO4 GL1 GL2 AM1 AM2 ROH"
+        )
+        assert lipids._unwrapped_residue_positions_frame == -1
+        assert len(lipids) == 1230
+        assert lipids.n_residues == 1230
+        assert lipids.universe is u
+        assert lipids.unwrapped_headgroup_centers.shape == (1230, 3)
