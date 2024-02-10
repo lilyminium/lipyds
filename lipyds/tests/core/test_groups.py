@@ -6,7 +6,7 @@ from lipyds.core.groups import Lipid, LipidGroup
 from lipyds.tests.datafiles import (
     SINGLE_POPC_UNWRAPPED,
     SINGLE_POPC_WRAPPED,
-    NEURONAL_DDAT,
+    NEURONAL_DDAT_GRO,
 )
 
 class TestLipid:
@@ -19,7 +19,7 @@ class TestLipid:
         assert lipid.headgroup.n_atoms == 2
         assert lipid.tailgroup.n_atoms == 10
         assert lipid.residue == u.residues[0]
-        assert lipid.leaflet == -1
+        assert lipid.leaflet is None
         assert lipid.universe is u
     
 
@@ -170,7 +170,7 @@ class TestLipid:
 class TestLipidGroup:
 
     def test_lipidgroup_creation_default(self):
-        u = mda.Universe(NEURONAL_DDAT)
+        u = mda.Universe(NEURONAL_DDAT_GRO)
         lipids = LipidGroup.from_atom_selections(
             u,
             select_headgroups="name PO4 GL1 GL2 AM1 AM2 ROH"
