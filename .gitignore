@@ -112,3 +112,5 @@ ENV/
 *.fuse_hidden*
 
 */.DS_Store
+
+*.xtc_offsets.lock
