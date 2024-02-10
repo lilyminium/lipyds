@@ -38,13 +38,64 @@ class GroupingMethod(abc.ABC):
         ]
 
 
+class GlobalZMethod(GroupingMethod):
+    """
+    This method assigns lipids to leaflets based on their z-coordinate.
+
+    Parameters
+    ----------
+    n_leaflets: int
+        Number of leaflets
+    cutoff_midplane: float
+        Cutoff for a lipid to be considered in the interstitial space.
+        If the z-coordinate of a lipid is within `cutoff_midplane` of the
+        mean z-coordinate of all lipids, it is considered in the interstitial
+        space. If 0, there is no interstitial space.
+    """
+    def __init__(
+        self,
+        n_leaflets: int = 2,
+        cutoff_midplane: float = 0,
+    ):
+        self.n_leaflets = n_leaflets
+        self.cutoff_midplane = cutoff_midplane
+    
+    def _run(self, lipids: LipidGroup) -> list[list[int]]:
+        coordinates = lipids.unwrapped_headgroup_centers
+        mean_z = coordinates[:, 2].mean()
+
+        lower_mask = coordinates[:, 2] < mean_z - self.cutoff_midplane
+        upper_mask = coordinates[:, 2] > mean_z + self.cutoff_midplane
+        
+        lower_indices = np.where(lower_mask)[0]
+        upper_indices = np.where(upper_mask)[0]
+        return [lower_indices, upper_indices]
+
 
 class GraphMethod(GroupingMethod):
+    """
+    This method assigns lipids to leaflets based on their distance to neighbours.
+    It uses a graph-based approach to find connected components, where
+    each connected component is a leaflet. A lipid is considered to be
+    "connected" to another lipid and in the same leaflet if it is within
+    ``cutoff`` distance of another lipid.
+
+    Parameters
+    ----------
+    sparse: bool
+        If True, use a sparse matrix to represent the adjacency matrix.
+        This is useful for very large systems.
+    cutoff: float
+        Cutoff for a lipid to be considered connected to another lipid.
+    n_leaflets: int
+        Number of leaflets
+    
+    """
 
     def __init__(
         self,
         sparse: bool = False,
-        cutoff: float = 12,
+        cutoff: float = 10,
         n_leaflets: int = 2,
     ):
         self.sparse = sparse
@@ -73,7 +124,7 @@ class GraphMethod(GroupingMethod):
         """
         from MDAnalysis.analysis.distances import contact_matrix
 
-        coordinates = self.lipids.unwrapped_headgroup_centers
+        coordinates = lipids.unwrapped_headgroup_centers
 
         try:
             adj = contact_matrix(
@@ -123,13 +174,35 @@ class GraphMethod(GroupingMethod):
 
 
 class SpectralClusteringMethod(GroupingMethod):
+    """
+    This method assigns lipids to leaflets based on clustering over lipid
+    "distances", where each distance is a function of distance and orientation.
+    This method uses the `SpectralClustering` algorithm from scikit-learn
+    and is useful for systems with high curvature, where each lipid
+    must be assigned to a leaflet. An interstitial space is not supported.
+
+    Parameters
+    ----------
+    delta: float
+        Width of the Gaussian kernel for clustering.
+        If None, it is automatically determined as
+        the maximum distance between lipids divided by 3.
+    cosine_threshold: float
+        Threshold for cosine similarity between lipid orientations.
+        If the angle between two lipid orientations is greater than
+        the arccos of this threshold, they are considered to be [anti-]/parallel.
+    cutoff: float
+        radius around each lipid to search for neighbours
+    n_leaflets: int
+        Number of leaflets    
+    """
     def __init__(
         self,
-        delta: typing.Optional[float] = 20,
-        cosine_threshold: float = 0.8,
-        angle_factor: float = 1,
+        delta: typing.Optional[float] = 10,
         cutoff: float = 12,
         n_leaflets: int = 2,
+        cosine_threshold: float = 1,
+        angle_factor: float = 1,
     ):
         try:
             from sklearn.cluster import SpectralClustering
@@ -149,6 +222,7 @@ class SpectralClusteringMethod(GroupingMethod):
         self.predictor = SpectralClustering(
             n_clusters=self.n_leaflets,
             affinity="precomputed",
+            assign_labels="cluster_qr",
         )
 
     def _get_delta(self, distance_matrix):
@@ -200,4 +274,5 @@ class SpectralClusteringMethod(GroupingMethod):
         local_indices = np.arange(len(lipids))
         where_to_split = np.where(np.ediff1d(data_labels[ix]))[0] + 1
         cluster_indices = np.split(local_indices[ix], where_to_split)
-        return cluster_indices
+        cluster_indices = sorted(cluster_indices, key=len, reverse=True)
+        return cluster_indices[:self.n_leaflets]
