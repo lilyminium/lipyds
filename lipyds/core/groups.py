@@ -94,6 +94,15 @@ class Lipid:
         self._first_headgroup_atom = self._headgroup[0]
         self._leaflet = None
 
+    def __repr__(self):
+        clsname = type(self).__name__
+        headgroups = " ".join([a.name for a in self.headgroup])
+        repr_string = (
+            f"<{clsname}: {self.residue.resname} "
+            f"(headgroups: {headgroups})"
+        )
+        return repr_string
+
     def copy(self):
         return type(self)(self.headgroup, self.tailgroup)
 
@@ -271,6 +280,10 @@ class LipidGroup:
             select_tailgroups=select_tailgroups,
         )
         return cls(lipids)
+    
+    def __repr__(self):
+        clsname = type(self).__name__
+        return f"<{clsname}: {len(self.lipids)} lipids>"
 
 
     def __init__(
@@ -400,6 +413,14 @@ class Leaflet(LipidGroup):
 
 class Bilayer:
 
+    def __repr__(self):
+        clsname = type(self).__name__
+        return (
+            f"<{clsname}: "
+            f"lower={len(self.leaflets[0])} lipids, "
+            f"upper={len(self.leaflets[1])} lipids>"
+        )
+
     def __iter__(self):
         return iter(self._leaflets)
 
@@ -430,4 +451,9 @@ class Bilayer:
         for i, leaflet in enumerate(self._leaflets):
             leaflet._bilayer = self
             leaflet._leaflet_index = i
+
+    @property
+    def leaflets(self) -> tuple[Leaflet]:
+        """The leaflets of the bilayer"""
+        return self._leaflets
 

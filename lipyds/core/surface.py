@@ -4,9 +4,7 @@ import pyvista as pv
 import numpy as np
 
 from .groups import Leaflet, Bilayer
-
-AxisLabels = typing.Literal["x", "y", "z"]
-LeafletLabels = typing.Literal["lower", "upper"]
+from lipyds.utils.typing import AxisLabels, LeafletLabels
 
 class Surface:
 
@@ -24,6 +22,10 @@ class Surface:
         self._other_point_indices = other_point_indices
         self._padded_point_indices = padded_point_indices
         self._all_point_normals = all_point_normals
+
+        self._surface["point_color"] = np.zeros(len(self._surface.points))
+        self._surface["point_color"][self._padded_point_indices] = -1
+        self._surface["point_color"][self._other_point_indices] = 1
 
     def _to_serializable(self):
         return {
@@ -169,10 +171,12 @@ class Surface:
                 if axis_label in pad_dimensions:
                     axis = all_points[:, axis_index]
                     lower = axis < padding_width
-                    lower_pad = axis[lower] + box[axis_index]
+                    lower_pad = np.array(all_points[lower])
+                    lower_pad[:, axis_index] += box[axis_index]
 
                     upper = axis > box[axis_index] - padding_width
-                    upper_pad = axis[upper] - box[axis_index]
+                    upper_pad = np.array(all_points[upper])
+                    upper_pad[:, axis_index] -= box[axis_index]
 
                     all_points = np.vstack((all_points, lower_pad, upper_pad))
         
@@ -191,7 +195,7 @@ class Surface:
         reference_normal: list[float] = [0, 0, 1],
         box=None,
     ):
-        from lipyds.lib.pyvutils import compute_surface_normals
+        from lipyds.lib.pvutils import compute_surface_normals
         from MDAnalysis.lib.distances import self_capped_distance
 
         normals = compute_surface_normals(
@@ -225,6 +229,10 @@ class Surface:
     @property
     def leaflet(self):
         return self._leaflet
+    
+    @property
+    def n_all_points(self):
+        return len(self._all_points)
 
     @property
     def universe(self):
@@ -245,10 +253,18 @@ class Surface:
     @property
     def lipid_point_normals(self):
         return self.all_point_normals[self._lipid_point_indices]
+    
+    @property
+    def n_other_points(self):
+        return len(self._other_point_indices)
 
     @property
     def other_points(self):
         return self._all_points[self._other_point_indices]
+    
+    @property
+    def n_padded_points(self):
+        return len(self._padded_point_indices)
     
     @property
     def padded_points(self):
@@ -263,10 +279,10 @@ class SurfaceBilayer:
         cls,
         bilayer: Bilayer,
         select_other: str = "protein",
-        cutoff_other: float = 6,
+        cutoff_other: float = 8,
         cutoff_normal_neighbors: float = 10,
         pad_dimensions: list[AxisLabels] = ["x", "y"],
-        padding_width: float = 8,
+        padding_width: float = 15,
         reference_normal: list[float] = [0, 0, 1],
 
     ):
@@ -327,6 +343,20 @@ class SurfaceBilayer:
 
     def __init__(self, surfaces: list[Surface]):
         self._surfaces = tuple(surfaces)
+
+    @property
+    def surfaces(self):
+        return self._surfaces
+
+    def to_pyvista_plotter(self):
+        plotter = pv.Plotter()
+        for surface in self._surfaces:
+            plotter.add_mesh(surface._surface)
+        return plotter
+
+    def show(self):
+        plotter = self.to_pyvista_plotter()
+        plotter.show()
 
 
 class SurfaceBilayerTrajectory:
