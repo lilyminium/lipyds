@@ -29,10 +29,38 @@ class TestSurface:
     def test_creation_from_leaflet(self, hsert_neuronal_upper_surface):
         assert hsert_neuronal_upper_surface.n_lipid_points == 334
         assert hsert_neuronal_upper_surface.n_all_points == 442
+        assert hsert_neuronal_upper_surface.n_other_points == 35
+        assert hsert_neuronal_upper_surface.n_padded_points == 73
+
+        assert len(hsert_neuronal_upper_surface._surface.points) == 442
+        assert len(hsert_neuronal_upper_surface._surface.faces) == 3400
+        assert hsert_neuronal_upper_surface._surface.n_faces == 850
+
+    def test_roundtrip_npz_serializable(self, hsert_neuronal_upper_surface):
+        surface = hsert_neuronal_upper_surface
+        contents = surface._to_npz_serializable(0, name="upper")
+        assert len(contents["points-0_upper"]) == 442
+        assert len(contents["faces-0_upper"]) == 3400
+        assert contents["n_faces-0_upper"] == 850
+        assert len(contents["lines-0_upper"]) == 0
+        assert contents["n_lines-0_upper"] == 0
+        assert len(contents["lipid_point_indices-0_upper"]) == 334
+        assert len(contents["other_point_indices-0_upper"]) == 35
+        assert len(contents["padded_point_indices-0_upper"]) == 73
+        assert contents["all_point_normals-0_upper"] is None
+
+        surface2 = Surface._from_npz_serializable(contents, 0, name="upper")
+        assert surface2.n_lipid_points == 334
+        assert surface2.n_all_points == 442
+        assert surface2.n_other_points == 35
+        assert surface2.n_padded_points == 73
+
+        assert len(surface2._surface.points) == 442
+        assert len(surface2._surface.faces) == 3400
+        assert surface2._surface.n_faces == 850
 
 
 class TestSurfaceBilayer:
-
     @pytest.fixture()
     def ddat_neuronal_bilayer(self):
         u = mda.Universe(NEURONAL_DDAT_GRO)
@@ -70,3 +98,5 @@ class TestSurfaceBilayer:
 
         assert lower.n_padded_points == 221
         assert upper.n_padded_points == 247
+
+
