@@ -122,7 +122,7 @@ if __name__ == "__main__":
                    'Mac OS-X',
                    'Unix',
                    'Windows'],            # Valid platforms your code works on, adjust to your flavor
-        python_requires=">=3.6",          # Python version restrictions
+        python_requires=">=3.10",          # Python version restrictions
 
         # Manual control if final package is compressible or not, set False to prevent the .egg from being made
         # zip_safe=False,
