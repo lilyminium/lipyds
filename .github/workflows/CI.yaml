@@ -14,6 +14,11 @@ on:
       - "main"
 
 
+defaults:
+  run:
+    shell: bash -l {0}
+
+
 jobs:
   test:
     name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}
@@ -21,13 +26,11 @@ jobs:
     strategy:
       matrix:
         os: [macOS-latest, ubuntu-latest]  # , windows-latest
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v3
-
     - name: Additional info about the build
-      shell: bash
       run: |
         uname -a
         df -h
@@ -35,36 +38,21 @@ jobs:
 
 
     # More info on options: https://github.com/conda-incubator/setup-miniconda
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: mamba-org/setup-micromamba@v1
       with:
-        python-version: ${{ matrix.python-version }}
         environment-file: devtools/conda-envs/test_env.yaml
-        add-pip-as-python-dependency: true
-        architecture: x64
-
-        miniforge-variant: Mambaforge
-        use-mamba: true
-        channels: conda-forge,defaults
-
-        activate-environment: test
-        auto-update-conda: true
-        auto-activate-base: false
-        show-channel-urls: true
+        create-args: >-
+            python=${{ matrix.python-version }}
 
     - name: Install package
 
       # conda setup requires this special shell
-      shell: bash -l {0}
       run: |
         python setup.py develop
-        conda list
+        micromamba list
 
 
     - name: Run tests
-
-      # conda setup requires this special shell
-      shell: bash -l {0}
-
       run: |
         pytest -v --cov=lipyds --cov-report=xml --color=yes lipyds/tests/
 
