@@ -1,6 +1,3 @@
-from typing import Union, Optional, Dict, Any
-from MDAnalysis.core.universe import Universe
-from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.lib import distances
 
 from scipy import interpolate as spinterp
