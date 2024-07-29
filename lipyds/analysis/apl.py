@@ -11,7 +11,7 @@ Classes
     :members:
 
 """
-from typing import Union, Optional, dict, Any
+from typing import Union, Optional, Any
 from MDAnalysis.core.universe import Universe
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.lib.distances import self_capped_distance
