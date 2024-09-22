@@ -11,7 +11,7 @@ from lipyds.analysis.contacts import ContactFraction
 
 class TestContactFraction:
 
-    def test_toy_system(self):
+    def test_toy_system_binary(self):
         """
         Test the contact fraction analysis on a toy system.
 
@@ -66,8 +66,21 @@ class TestContactFraction:
         assert np.allclose(cf.results.group_counts_over_time, 50)
 
         # therefore expected probability
-        assert cf.results.expected_contact_probability_over_time.shape == (2, 2, 2)
-        assert np.allclose(cf.results.expected_contact_probability_over_time, 0.5)
+        assert cf.results.expected_contact_probability_over_time.shape == (2, 2, 2, 2)
+
+        expected_contact_probability = np.array([
+            [49/99, 50/99],
+            [50/99, 49/99]
+        ])
+
+        for leaflet_index, leaflet in enumerate(
+            cf.results.expected_contact_probability_over_time
+        ):
+            for frame_index in range(2): 
+                assert np.allclose(
+                    leaflet[..., frame_index],
+                    expected_contact_probability
+                )
 
         # check counts
         totally_mixed_counts = np.array([
@@ -134,12 +147,12 @@ class TestContactFraction:
 
         # check contact fractions
         totally_mixed_contact_fraction = np.array([
-            [0.94736842, 1.05263158],
-            [1.05263158, 0.94736842]
+            [0.95703545, 1.04210526],
+            [1.04210526, 0.95703545]
         ])
         totally_segmented_contact_fraction = np.array([
-            [1.83625731, 0.16374269],
-            [0.16374269, 1.83625731]
+            [1.85499463, 0.16210526],
+            [0.16210526, 1.85499463]
         ])
         # upper leaflet, frame 1
         assert np.allclose(
@@ -163,7 +176,15 @@ class TestContactFraction:
         )
 
         # check averaging over time
-        assert np.allclose(cf.results.expected_contact_probability, 0.5)
+        assert np.allclose(
+            cf.results.expected_contact_probability[0],
+            expected_contact_probability
+        )
+        
+        assert np.allclose(
+            cf.results.expected_contact_probability[1],
+            expected_contact_probability
+        )
         expected_probability = np.array([
             [0.69590643, 0.30409357],
             [0.30409357, 0.69590643],
@@ -175,8 +196,8 @@ class TestContactFraction:
             cf.results.observed_contact_probability[1], expected_probability
         )
         expected_contact_fraction = np.array([
-            [1.39181287, 0.60818713],
-            [0.60818713, 1.39181287],
+            [1.40601504, 0.60210526],
+            [0.60210526, 1.40601504],
         ])
         assert np.allclose(
             cf.results.contact_fractions[0], expected_contact_fraction

@@ -1,3 +1,4 @@
+import itertools
 import typing
 
 import MDAnalysis as mda
@@ -163,13 +164,35 @@ class ContactFraction(LeafletAnalysisBase):
                 ] += 1
 
     def _conclude(self):
+        # (n_leaflets, n_frames)
         self.results.total_counts_over_time = (
             self.results.group_counts_over_time.sum(axis=1)
         )
-        self.results.expected_contact_probability_over_time = (
-            self.results.group_counts_over_time
-            / self.results.total_counts_over_time[:, None]
-        )
+        # need to avoid counting self-contacts
+        # this is 2D!
+        expected_contact_probability_over_time = []
+        # group_counts_over_time shape:
+        # (n_leaflet, n_groups, n_frames)
+        n_groups = self.results.group_counts_over_time.shape[1]
+
+        # temporarily transpose as this is confusing
+        # (n_groups, n_leaflets, n_frames)
+        full_counts = self.results.group_counts_over_time.transpose(1, 0, 2)
+        total_counts = self.results.total_counts_over_time[None, ...] - 1
+
+        for group_index in range(n_groups):
+            counts = np.array(full_counts)
+            # we can't have negative count
+            group_count = counts[group_index]
+            group_count[group_count > 0] -= 1
+            expected_contact_probability_over_time.append(
+                counts / total_counts
+            )
+
+        self.results.expected_contact_probability_over_time = np.array(
+            expected_contact_probability_over_time
+        ).transpose(2, 0, 1, 3)
+
         self.results.total_observed_contacts_over_time = (
             self.results.contact_counts_over_time.sum(axis=(1, 2)) / 2
         )
@@ -183,10 +206,30 @@ class ContactFraction(LeafletAnalysisBase):
             / self.results.expected_contact_probability_over_time
         )
 
-        self.results.expected_contact_probability = (
-            self.results.group_counts_over_time.sum(axis=-1)
-            / self.results.total_counts_over_time.sum(axis=-1)[:, None]
-        )
+        # expected contact ability
+        # avoid self contacts again as above
+
+        # (n_groups, n_leaflets)
+        full_counts = self.results.group_counts_over_time.sum(axis=-1).T
+        # subtract 1 from each group for each frame they're present
+        # (n_groups, n_leaflets)
+        present_in_frames = (
+            self.results.group_counts_over_time > 0
+        ).sum(axis=-1).T
+        # (n_leaflets)
+        total_counts = self.results.total_counts_over_time.sum(axis=-1)
+        expected_contact_probability = []
+        for group_index in range(n_groups):
+            counts = np.array(full_counts)
+            n_group = present_in_frames[group_index]
+            counts[group_index] -= n_group
+            expected_contact_probability.append(
+                counts / (total_counts - n_group)
+            )
+        self.results.expected_contact_probability = np.array(
+            expected_contact_probability
+        ).transpose(2, 0, 1)
+
 
         self.results.observed_contact_probability = (
             self.results.contact_counts_over_time.sum(axis=-1)
