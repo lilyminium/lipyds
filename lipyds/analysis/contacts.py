@@ -88,8 +88,8 @@ class ContactFraction(LeafletAnalysisBase):
         in leaflet i at frame j.
     results.expected_contact_probability_over_time : np.ndarray
         The expected proportion of contacts for each group.
-        The shape is (n_leaflets, n_groups, n_frames).
-        results.expected_contact_probability_over_time[i, j, k] is the expected
+        The shape is (n_leaflets, n_groups, n_groups, n_frames).
+        results.expected_contact_probability_over_time[i, j, k, l] is the expected
         proportion of contacts between group j and group k in leaflet i at frame k.
         Note that this means that summing the probabilities per leaflet and frame
         will *double-count* off-diagonal contacts. However, the diagonal
