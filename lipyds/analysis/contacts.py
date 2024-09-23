@@ -13,11 +13,22 @@ class ContactFraction(LeafletAnalysisBase):
     Calculate the fraction of contacts between groups of residues in a bilayer.
 
     In a leaflet comprising N lipids with :math:`n_A` molecules of lipid group A,
-    the proportion (or ``expected_contact_probability`` of A is:
+    and :math:`n_B` molecules of lipid group B, the `expected_contact_probability`
+    between a single molecule `b` and any molecule in group `A` is:
 
     .. math::
 
-        Pr(A) = \\frac{n_A}{N}
+        Pr(A, B) = \\frac{n_a \\times n_b}{N(N - 1)}
+
+    The `expected_contact_probability` between a single molecule `b` and any
+    other molecule in group `B` is:
+
+    .. math::
+
+        Pr(B) = \\frac{n_b \\times (n_b - 1)}{N(N - 1)}
+
+    That is to say, if only a single molecule of group `B` is present, the
+    probability of contact between `b` and any other molecule in group `B` is 0.
 
     The observed fraction (or ``observed_contact_probability``) of contacts
     between lipid group A and lipid group B is the ratio of observed contacts
@@ -33,6 +44,14 @@ class ContactFraction(LeafletAnalysisBase):
     .. math::
 
         CF_{AB} = \\frac{C_{AB}}{C} \\frac{1}{Pr(A \cap B)}
+
+    The contact fraction is bounded between [0, infinity).
+    A value of nan indicates that the expected contact probability is 0.
+    A value of 1 indicates that the observed contact probability is equal
+    to the expected contact probability. A value < 1 indicates that the observed
+    contact probability is less than the expected contact probability.
+    A value > 1 indicates that the observed contact probability is greater
+    than the expected contact probability.
 
 
     Parameters
@@ -52,40 +71,66 @@ class ContactFraction(LeafletAnalysisBase):
     results.contact_counts_over_time : np.ndarray
         The number of contacts between each pair of groups over time.
         The shape is (n_leaflets, n_groups, n_groups, n_frames).
+        results.contact_counts_over_time[i, j, k, l] is the number of contacts
+        between group j and group k in leaflet i at frame l.
+        Note that these means that summing the counts per leaflet and frame
+        will *double-count* off-diagonal contacts. However, the diagonal
+        is not double-counted.
     results.group_counts_over_time : np.ndarray
         The number of residues in each group over time.
         The shape is (n_leaflets, n_groups, n_frames).
+        results.group_counts_over_time[i, j, k] is the number of residues
+        in group j in leaflet i at frame k.
     results.total_counts_over_time : np.ndarray
         The total number of residues in each leaflet over time.
         The shape is (n_leaflets, n_frames).
+        results.total_counts_over_time[i, j] is the total number of residues
+        in leaflet i at frame j.
     results.expected_contact_probability_over_time : np.ndarray
         The expected proportion of contacts for each group.
         The shape is (n_leaflets, n_groups, n_frames).
+        results.expected_contact_probability_over_time[i, j, k] is the expected
+        proportion of contacts between group j and group k in leaflet i at frame k.
+        Note that this means that summing the probabilities per leaflet and frame
+        will *double-count* off-diagonal contacts. However, the diagonal
+        is not double-counted. Summing the upper or lower triangle will give a total of 1.
     results.total_observed_contacts_over_time : np.ndarray
         The total number of observed contacts in each leaflet over time.
         The shape is (n_leaflets, n_frames).
+        results.total_observed_contacts_over_time[i, j] is the total number of
+        observed contacts in leaflet i at frame j.
     results.observed_contact_probability_over_time : np.ndarray
         The observed probability of contact between each pair of groups
         over time.
         The shape is (n_leaflets, n_groups, n_groups, n_frames).
+        results.observed_contact_probability_over_time[i, j, k, l] is the observed
+        probability of contact between group j and group k in leaflet i at frame l.
+        Note that this means that summing the probabilities per leaflet and frame
+        will *double-count* off-diagonal contacts. However, the diagonal
+        is not double-counted. Summing the upper or lower triangle will give a total of 1.
     results.contact_fractions_over_time : np.ndarray
-        The fraction of observed contacts between each pair of groups
-        over time.
+        The contact fraction between each pair of groups over time.
         The shape is (n_leaflets, n_groups, n_groups, n_frames).
+        results.contact_fractions_over_time[i, j, k, l] is the contact fraction 
+        between group j and group k in leaflet i at frame l. 
     results.expected_contact_probability : np.ndarray
         The expected probability of contact between each pair of groups.
         Unlike ``results.expected_contact_probability_over_time``, this is not per-frame.
-        The probability here arises from *summed counts* over time.
+        The probability here arises from *summed counts* over time, not the mean.
         The shape is (n_leaflets, n_groups, n_groups).
+        results.expected_contact_probability[i, j, k] is the expected probability
+        of contact between group j and group k in leaflet i.
     results.observed_contact_probability : np.ndarray
         The observed probability of contact between each pair of groups.
         Unlike ``results.observed_contact_probability_over_time``, this is not per-frame.
-        The probability here arises from *summed counts* over time.
+        The probability here arises from *summed counts* over time, not the mean.
         The shape is (n_leaflets, n_groups, n_groups).
+        results.observed_contact_probability[i, j, k] is the observed probability
+        of contact between group j and group k in leaflet i.
     results.contact_fractions : np.ndarray
         The fraction of observed contacts between each pair of groups.
         Unlike ``results.contact_fractions_over_time``, this is not per-frame.
-        The probability here arises from *summed counts* over time.
+        The probability here arises from *summed counts* over time, not the mean.
         The shape is (n_leaflets, n_groups, n_groups).
     """
     def __init__(
@@ -164,41 +209,60 @@ class ContactFraction(LeafletAnalysisBase):
                 ] += 1
 
     def _conclude(self):
+        n_groups = len(self.unique_ids)
+        # (n_groups, n_groups, n_leaflets, n_frames)
+        original_contact_counts_over_time = np.array(self.results.contact_counts_over_time)
+        # don't doublecount diagonal in user-facing results
+        contact_counts_over_time = self.results.contact_counts_over_time.transpose(
+            1, 2, 0, 3
+        )
+        for i in range(n_groups):
+            contact_counts_over_time[i, i] //= 2
+        # (n_leaflets, n_groups, n_groups, n_frames)
+        self.results.contact_counts_over_time = contact_counts_over_time.transpose(
+            2, 0, 1, 3
+        )
+        
         # (n_leaflets, n_frames)
         self.results.total_counts_over_time = (
             self.results.group_counts_over_time.sum(axis=1)
         )
-        # need to avoid counting self-contacts
-        # this is 2D!
-        expected_contact_probability_over_time = []
-        # group_counts_over_time shape:
-        # (n_leaflet, n_groups, n_frames)
-        n_groups = self.results.group_counts_over_time.shape[1]
 
         # temporarily transpose as this is confusing
         # (n_groups, n_leaflets, n_frames)
         full_counts = self.results.group_counts_over_time.transpose(1, 0, 2)
-        total_counts = self.results.total_counts_over_time[None, ...] - 1
 
-        for group_index in range(n_groups):
-            counts = np.array(full_counts)
-            # we can't have negative count
-            group_count = counts[group_index]
-            group_count[group_count > 0] -= 1
-            expected_contact_probability_over_time.append(
-                counts / total_counts
-            )
+        # (n_leaflets, n_frames)
+        total_counts = self.results.total_counts_over_time
+        lower = total_counts * (total_counts - 1)
 
-        self.results.expected_contact_probability_over_time = np.array(
-            expected_contact_probability_over_time
+        # (n_groups, n_groups, n_leaflets, n_frames)
+        outer_product = np.einsum(
+            'ijk,ljk->iljk', full_counts, full_counts
+        )
+        # subtract off the diagonal
+        diag_indices = np.diag_indices(n_groups)
+        outer_product[diag_indices] -= full_counts
+        # double the off-diagonals
+        outer_product += outer_product.transpose(1, 0, 2, 3)
+        outer_product[diag_indices] //= 2
+
+        self.results.expected_contact_probability_over_time = (
+            outer_product / lower
         ).transpose(2, 0, 1, 3)
 
-        self.results.total_observed_contacts_over_time = (
-            self.results.contact_counts_over_time.sum(axis=(1, 2)) / 2
-        )
+        # (n_leaflets, n_frames)
+        total_observed_contacts_over_time = original_contact_counts_over_time.sum(axis=(1, 2))
+        # again don't double count in user-facing results
+        self.results.total_observed_contacts_over_time = total_observed_contacts_over_time / 2
+        # self.results.observed_contact_probability_over_time = (
+        #     original_contact_counts_over_time.transpose((1, 2, 0, 3))
+        #     / total_observed_contacts_over_time
+        # ).transpose((2, 0, 1, 3))
+
         self.results.observed_contact_probability_over_time = (
-            self.results.contact_counts_over_time.transpose((1, 2, 0, 3))
-            / self.results.total_observed_contacts_over_time
+            contact_counts_over_time / self.results.total_observed_contacts_over_time
+
         ).transpose((2, 0, 1, 3))
 
         self.results.contact_fractions_over_time = (
@@ -206,37 +270,22 @@ class ContactFraction(LeafletAnalysisBase):
             / self.results.expected_contact_probability_over_time
         )
 
-        # expected contact ability
-        # avoid self contacts again as above
-
-        # (n_groups, n_leaflets)
-        full_counts = self.results.group_counts_over_time.sum(axis=-1).T
-        # subtract 1 from each group for each frame they're present
-        # (n_groups, n_leaflets)
-        present_in_frames = (
-            self.results.group_counts_over_time > 0
-        ).sum(axis=-1).T
-        # (n_leaflets)
-        total_counts = self.results.total_counts_over_time.sum(axis=-1)
-        expected_contact_probability = []
-        for group_index in range(n_groups):
-            counts = np.array(full_counts)
-            n_group = present_in_frames[group_index]
-            counts[group_index] -= n_group
-            expected_contact_probability.append(
-                counts / (total_counts - n_group)
-            )
-        self.results.expected_contact_probability = np.array(
-            expected_contact_probability
+        # expected contact ability without averaging over frames
+        # just sum over time
+        # (n_groups, n_groups, n_leaflets)
+        contact_counts = outer_product.sum(axis=-1)
+        lower_2 = lower.sum(axis=-1)
+        self.results.expected_contact_probability = (
+            contact_counts / lower_2
         ).transpose(2, 0, 1)
 
+        contact_counts = self.results.contact_counts_over_time.sum(axis=-1)
+        total_observed_contacts = self.results.total_observed_contacts_over_time.sum(axis=-1)
 
         self.results.observed_contact_probability = (
-            self.results.contact_counts_over_time.sum(axis=-1)
-            / self.results.total_observed_contacts_over_time.sum(
-                axis=-1
-            )[:, None, None]
+            contact_counts / total_observed_contacts[..., None, None]
         )
+        
         self.results.contact_fractions = (
             self.results.observed_contact_probability
             / self.results.expected_contact_probability
