@@ -100,9 +100,9 @@ class LeafletFinder:
     def __init__(self, universe: Union[AtomGroup, Universe],
                  select: Optional[str] = 'all',
                  select_tailgroups: Optional[str] = None,
-                 cutoff: float = 40,
+                 cutoff: float = 15,
                  pbc: bool = True,
-                 method: str = "spectralclustering",
+                 method: str = "graph",
                  n_leaflets: int = 2,
                  normal_axis: str = "z",
                  update_TopologyAttr: bool = False,
@@ -111,7 +111,7 @@ class LeafletFinder:
         self.universe = universe.universe
         self.pbc = pbc
         self.n_leaflets = n_leaflets
-        self.cutoff = cutoff
+        self._cutoff = cutoff
         self.kwargs = dict(**kwargs)
         self._normal_axis = ["x", "y", "z"].index(normal_axis)
 
@@ -148,6 +148,15 @@ class LeafletFinder:
             self._method = self.method = method
 
         self._update_TopologyAttr = update_TopologyAttr
+
+    @property
+    def cutoff(self):
+        return self._cutoff
+
+    @cutoff.setter
+    def cutoff(self, value):
+        self._cutoff = value
+        self.method.cutoff = value
 
     @property
     def box(self):
@@ -283,7 +292,6 @@ class LeafletFinder:
                      for x in by_leaflet]
         center = np.concatenate(unwrapped).mean(axis=0)
         return unwrapped
-        return [x - center for x in unwrapped]
 
     @cached_property
     def resindex_to_leaflet(self):

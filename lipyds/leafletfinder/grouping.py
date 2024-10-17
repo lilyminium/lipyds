@@ -62,6 +62,7 @@ class GraphMethod(GroupingMethod):
                          cutoff=cutoff, pbc=pbc)
         self.sparse = sparse
         self.returntype = "numpy" if not sparse else "sparse"
+        self.graph = None
 
     def run(self, **kwargs) -> List[List[int]]:
         import networkx as nx
@@ -71,18 +72,18 @@ class GraphMethod(GroupingMethod):
             adj = contact_matrix(coordinates, cutoff=self.cutoff, box=box,
                                 returntype=self.returntype)
         except ValueError as exc:
-            if sparse is None:
+            if self.sparse is None:
                 warnings.warn("NxN matrix is too big. Switching to sparse "
                             "matrix method")
                 adj = contact_matrix(coordinates, cutoff=cutoff, box=box,
                                     returntype="sparse")
-            elif sparse is False:
+            elif self.sparse is False:
                 raise ValueError("NxN matrix is too big. "
                                 "Use `sparse=True`") from None
             else:
                 raise exc 
-        graph = nx.Graph(adj)
-        groups = [list(c) for c in nx.connected_components(graph)]
+        self.graph = nx.Graph(adj)
+        groups = [list(c) for c in nx.connected_components(self.graph)]
         return groups
 
 
