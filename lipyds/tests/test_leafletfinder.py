@@ -25,6 +25,21 @@ class BaseTestLeafletFinder:
         for found, given in zip(lf.leaflet_residues, self.leaflet_resix):
             assert_equal(found.resindices, given,
                          err_msg="Found wrong leaflet lipids")
+            
+    @pytest.mark.parametrize("update_TopologyAttr", [True, False])
+    def test_updateTopologyAttr(self, universe, method, kwargs, update_TopologyAttr):
+        lf = LeafletFinder(universe, select=self.select, pbc=True,
+                           method=method, update_TopologyAttr=update_TopologyAttr, **kwargs)
+        lf.run()
+        assert lf._update_TopologyAttr == update_TopologyAttr
+
+        if update_TopologyAttr:
+            for index, leaflet_resix in enumerate(self.leaflet_resix):
+                residues = universe.residues[leaflet_resix]
+                leaflet_index = set(residues.leaflets)
+                assert len(leaflet_index) == 1
+                assert leaflet_index.pop() == index
+                
 
 
 @pytest.mark.parametrize("method, kwargs", [
