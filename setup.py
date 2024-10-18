@@ -13,7 +13,6 @@ from subprocess import getoutput
 from setuptools import setup, find_packages, Extension
 from distutils.ccompiler import new_compiler
 from distutils.sysconfig import customize_compiler
-import versioneer
 
 RELEASE = "0.0.0-dev0"
 
@@ -97,8 +96,6 @@ if __name__ == "__main__":
         description=short_description[0],
         long_description=long_description,
         long_description_content_type="text/markdown",
-        version=versioneer.get_version(),
-        cmdclass=versioneer.get_cmdclass(),
         license='MIT',
 
         # Which Python importable modules should be included when your package is installed
