@@ -13,6 +13,9 @@ A toolkit for leaflet-based membrane analysis
 It is still in early development status and should be regarded as experimental --
 the API is very likely to change in the future. Please use at your own risk!**
 
+**Note: this package is temporarily stripped back to just supporting the LeafletFinder
+to unblock core MDAnalysis development.**
+
 The initial code was first used in the below publication. Please cite it if
 you use this package:
 
