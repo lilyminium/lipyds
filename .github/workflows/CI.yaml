@@ -6,11 +6,9 @@ on:
   # Both are tracked here to keep legacy and new codes working
   push:
     branches:
-      - "master"
       - "main"
   pull_request:
     branches:
-      - "master"
       - "main"
 
 
@@ -25,7 +23,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-latest, ubuntu-latest]  # , windows-latest
+        os: [macOS-13, macOS-latest, ubuntu-latest]  # , windows-latest
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
@@ -38,15 +36,13 @@ jobs:
 
 
     # More info on options: https://github.com/conda-incubator/setup-miniconda
-    - uses: mamba-org/setup-micromamba@v1
+    - uses: mamba-org/setup-micromamba@v2
       with:
         environment-file: devtools/conda-envs/test_env.yaml
         create-args: >-
             python=${{ matrix.python-version }}
 
     - name: Install package
-
-      # conda setup requires this special shell
       run: |
         python setup.py develop
         micromamba list

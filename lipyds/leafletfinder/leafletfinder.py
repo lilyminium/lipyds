@@ -2,6 +2,7 @@
 LeafletFinder
 =============
 
+
 Classes
 -------
 
@@ -9,6 +10,7 @@ Classes
     :members:
 """
 
+import itertools
 from typing import Optional, Union
 
 import numpy as np
@@ -100,9 +102,9 @@ class LeafletFinder:
     def __init__(self, universe: Union[AtomGroup, Universe],
                  select: Optional[str] = 'all',
                  select_tailgroups: Optional[str] = None,
-                 cutoff: float = 40,
+                 cutoff: float = 15,
                  pbc: bool = True,
-                 method: str = "spectralclustering",
+                 method: str = "graph",
                  n_leaflets: int = 2,
                  normal_axis: str = "z",
                  update_TopologyAttr: bool = False,
@@ -111,9 +113,10 @@ class LeafletFinder:
         self.universe = universe.universe
         self.pbc = pbc
         self.n_leaflets = n_leaflets
-        self.cutoff = cutoff
+        self._cutoff = cutoff
         self.kwargs = dict(**kwargs)
         self._normal_axis = ["x", "y", "z"].index(normal_axis)
+        self._select = select
 
         self.atomgroup = universe.select_atoms(select, periodic=pbc)
         self.atoms_by_residue = self.atomgroup.split("residue")
@@ -136,6 +139,7 @@ class LeafletFinder:
         if method == "graph":
             self.method = GraphMethod(self.atomgroup, self.tailgroups,
                                       cutoff=self.cutoff, pbc=self.pbc,
+                                      n_leaflets=self.n_leaflets,
                                       **kwargs)
             self._method = self.method.run
         elif method == "spectralclustering":
@@ -148,6 +152,15 @@ class LeafletFinder:
             self._method = self.method = method
 
         self._update_TopologyAttr = update_TopologyAttr
+
+    @property
+    def cutoff(self):
+        return self._cutoff
+
+    @cutoff.setter
+    def cutoff(self, value):
+        self._cutoff = value
+        self.method.cutoff = value
 
     @property
     def box(self):
@@ -182,15 +195,22 @@ class LeafletFinder:
                 writer.write(ag, name=f"leaflet_{i:d}")
 
     def __repr__(self):
-        return (f"LeafletFinder(method={self.method}, select='{self.atomgroup}', "
+        try:
+            name = self.method.name
+        except AttributeError:
+            name = self.method
+        return (f"LeafletFinder(method={name}, select='{self._select}', "
                 f"cutoff={self.cutoff:.1f} Å, pbc={self.pbc})")
+    
+    def _run(self):
+        return self._method(selection=self.atomgroup,
+                            tailgroups=self.tailgroups,
+                            cutoff=self.cutoff, box=self.box,
+                            **self.kwargs)
 
     @cached_property
     def _output_leaflet_indices(self):
-        clusters = self._method(selection=self.atomgroup,
-                                tailgroups=self.tailgroups,
-                                cutoff=self.cutoff, box=self.box,
-                                **self.kwargs)
+        clusters = self._run()
         return [sorted(x) for x in clusters]
 
     @cached_property
@@ -283,7 +303,6 @@ class LeafletFinder:
                      for x in by_leaflet]
         center = np.concatenate(unwrapped).mean(axis=0)
         return unwrapped
-        return [x - center for x in unwrapped]
 
     @cached_property
     def resindex_to_leaflet(self):
@@ -328,3 +347,82 @@ class LeafletFinder:
             return residues.atoms[[]]
         outside_atoms = sum([atoms[i][0] for i in outside_ix])
         return outside_atoms
+
+
+    @classmethod
+    def optimize_cutoff(
+        cls,
+        universe,
+        dmin: float = 10.0,
+        dmax: float = 20.0,
+        step: float = 0.5,
+        max_imbalance: float = 0.2,
+        n_leaflets: int = 2,
+        **kwargs
+    ) -> float:
+        """
+        Find cutoff that minimizes number of disconnected groups.
+
+        Applies heuristics to find best groups:
+
+            1. at least two groups (assumes that there are at least 2 leaflets)
+            2. reject any solutions for which:
+
+        .. math::
+
+                \frac{|N_0 - N_1|}{|N_0 + N_1|} > \mathrm{max_imbalance}
+
+        with :math:`N_i` being the number of lipids in group
+        :math:`i`. This heuristic picks groups with balanced numbers of
+        lipids.
+
+        
+        Parameters
+        ----------
+        universe: Universe or AtomGroup
+            Atoms to apply the algorithm to
+        dmin: float, optional
+            Minimum cutoff distance
+        dmax: float, optional
+            Maximum cutoff distance
+        step: float, optional
+            Step size for searching cutoff distances
+        max_imbalance: float, optional
+            Maximum imbalance between groups allowed
+        n_leaflets: int, optional
+            Number of leaflets to find
+        **kwargs:
+            Passed to :class:`LeafletFinder`
+        """
+
+        def _run(cutoff):
+            lf = cls(universe, cutoff=cutoff, n_leaflets=n_leaflets, **kwargs)
+            lf.run()
+            return lf
+        
+        valid_cutoffs = []
+        for cutoff in np.arange(dmin, dmax, step):
+            lf = _run(cutoff)
+
+            # if we don't have enough leaflets, continue
+            if len(lf._output_leaflet_indices) < n_leaflets:
+                continue
+
+            # check imbalance between groups
+            sizes = [len(x) for x in lf.leaflet_residues_by_size]
+            for i, j in itertools.combinations(range(n_leaflets), 2):
+                upper = abs(sizes[i] - sizes[j])
+                lower = sizes[i] + sizes[j]
+                imbalance = upper / lower
+                if imbalance > max_imbalance:
+                    continue
+            valid_cutoffs.append((-sum(sizes), cutoff))
+        
+        if not valid_cutoffs:
+            raise ValueError("No valid cutoffs found.")
+            
+        # sort so first item is highest number of lipids matched, lowest cutoff
+        valid_cutoffs.sort()
+        return valid_cutoffs[0][-1]
+
+        

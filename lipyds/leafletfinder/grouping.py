@@ -28,13 +28,16 @@ from ..lib.mdautils import (get_centers_by_residue, get_orientations,
 class GroupingMethod(abc.ABC):
     def __init__(self, headgroups: AtomGroup,
                  tailgroups: Optional[AtomGroup]=None,
-                 cutoff: float=15.0, pbc: bool=False):
+                 cutoff: float=15.0, pbc: bool=False,
+                 n_leaflets: int = 2,
+                 ):
         self.headgroups = headgroups
         if tailgroups is None:
             tailgroups = self.headgroups.residues.atoms - headgroups
         self.tailgroups = tailgroups
         self.n_residues = len(self.headgroups.residues)
         self.cutoff = cutoff
+        self.n_leaflets = n_leaflets
         self.pbc = pbc
         if pbc:
             self.get_box = lambda: self.headgroups.universe.dimensions
@@ -47,10 +50,15 @@ class GroupingMethod(abc.ABC):
 
 class GraphMethod(GroupingMethod):
 
+    name = "graph"
+
     def __init__(self, headgroups: AtomGroup,
                  tailgroups: Optional[AtomGroup]=None,
                  cutoff: float=15.0, pbc: bool=False,
-                 sparse: Optional[bool]=None, **kwargs):
+                 sparse: Optional[bool]=None,
+                 n_leaflets: int = 2,
+                 **kwargs
+                 ):
         try:
             import networkx as nx
         except ImportError:
@@ -59,9 +67,11 @@ class GraphMethod(GroupingMethod):
                             "`conda install networkx` or "
                             "`pip install networkx`.") from None
         super().__init__(headgroups, tailgroups=tailgroups,
-                         cutoff=cutoff, pbc=pbc)
+                         cutoff=cutoff, pbc=pbc,
+                        n_leaflets=n_leaflets)
         self.sparse = sparse
         self.returntype = "numpy" if not sparse else "sparse"
+        self.graph = None
 
     def run(self, **kwargs) -> List[List[int]]:
         import networkx as nx
@@ -71,22 +81,25 @@ class GraphMethod(GroupingMethod):
             adj = contact_matrix(coordinates, cutoff=self.cutoff, box=box,
                                 returntype=self.returntype)
         except ValueError as exc:
-            if sparse is None:
+            if self.sparse is None:
                 warnings.warn("NxN matrix is too big. Switching to sparse "
                             "matrix method")
-                adj = contact_matrix(coordinates, cutoff=cutoff, box=box,
+                adj = contact_matrix(coordinates, cutoff=self.cutoff, box=box,
                                     returntype="sparse")
-            elif sparse is False:
+            elif self.sparse is False:
                 raise ValueError("NxN matrix is too big. "
                                 "Use `sparse=True`") from None
             else:
                 raise exc 
-        graph = nx.Graph(adj)
-        groups = [list(c) for c in nx.connected_components(graph)]
-        return groups
+        self.graph = nx.Graph(adj)
+        groups = [list(c) for c in nx.connected_components(self.graph)]
+        return groups[:self.n_leaflets]
 
 
 class SpectralClusteringMethod(GroupingMethod):
+
+    name = "spectralclustering"
+
     def __init__(self, headgroups: AtomGroup,
                  tailgroups: Optional[AtomGroup]=None,
                  cutoff: float=30.0, pbc: bool=False,
@@ -103,7 +116,7 @@ class SpectralClusteringMethod(GroupingMethod):
                             'scikit-learn`.') from None
 
         super().__init__(headgroups, tailgroups=tailgroups,
-                         cutoff=cutoff, pbc=pbc)
+                         cutoff=cutoff, pbc=pbc, n_leaflets=n_leaflets)
         self.delta = delta
         self.cosine_threshold = cosine_threshold
         self.angle_factor = angle_factor
@@ -141,4 +154,4 @@ class SpectralClusteringMethod(GroupingMethod):
         indices = np.arange(self.n_residues)
         splix = np.where(np.ediff1d(data_labels[ix]))[0] + 1
         cluster_indices = np.split(indices[ix], splix)
-        return cluster_indices
+        return cluster_indices[:self.n_leaflets]
