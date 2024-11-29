@@ -1,7 +1,12 @@
-include LICENSE
-include MANIFEST.in
-include CODE_OF_CONDUCT.md
-include versioneer.py
+global-include *.pyx
+global-include *.pxd
+global-include *.c
+global-include *.h
+global-include *.cpp
+recursive-include doc * 
+include LICENSE README.md CODE_OF_CONDUCT.md
+include setup.py
 
 graft lipyds
-global-exclude *.py[cod] __pycache__ *.so
+global-exclude *.py[cod] __pycache__
+global-exclude .git
