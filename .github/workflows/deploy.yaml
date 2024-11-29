@@ -92,7 +92,7 @@ jobs:
           path: package/dist/*.tar.gz
           retention-days: 7
 
-  upload_testpypi_mdanalysis:
+  upload_testpypi_lipyds:
     if: |
       github.repository == 'lilyminium/lipyds' &&
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/package'))
