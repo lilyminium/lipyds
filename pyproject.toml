@@ -1,9 +1,53 @@
 [build-system]
 requires = [
+    "Cython>=0.28",
     "setuptools",
+    "numpy>=2.0.0",
     "versioningit",
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "lipyds"
+description = "A toolkit for leaflet-based membrane analysis"
+license = {file = "LICENSE"}
+authors = [
+    { name = "Lily Wang", email = "lily@mdanalysis.org" }
+]
+maintainers = [
+    { name = "Lily Wang", email = "lily@mdanalysis.org" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "MDAnalysis>=2.0.0",
+]
+keywords = [
+    "molecular simulations",
+]
+dynamic = [
+    "version",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6.0",
+    "pytest-xdist>=2.5",
+    "pytest-cov>=3.0",
+]
+doc = [
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
+[tool.setuptools.packages.find]
+include = ["lipyds"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = [
+    "lipyds/tests",
+]
 
 [tool.versioningit.vcs]
 method = "git"

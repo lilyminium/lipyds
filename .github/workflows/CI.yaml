@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-13, macOS-latest, ubuntu-latest]  # , windows-latest
+        os: [macOS-latest, ubuntu-latest]  # , windows-latest
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
@@ -44,8 +44,7 @@ jobs:
 
     - name: Install package
       run: |
-        python setup.py develop
-        micromamba list
+        pip install -e .
 
 
     - name: Run tests
