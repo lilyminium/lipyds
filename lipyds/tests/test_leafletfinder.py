@@ -48,13 +48,15 @@ class BaseTestLeafletFinder:
                 
 
 
-@pytest.mark.parametrize("method, kwargs", [
-    ("spectralclustering", {"cutoff": 40}),
-])
-class TestSinglePlanar(BaseTestLeafletFinder):
+class BaseTestSinglePlanar(BaseTestLeafletFinder):
     file = Martini_membrane_gro
     leaflet_resix = [np.arange(180), np.arange(225, 405)]
 
+@pytest.mark.parametrize("method, kwargs", [
+    ("spectralclustering", {"cutoff": 40}),
+])
+class TestSinglePlanar(BaseTestSinglePlanar):
+    """Test the core clustering methods"""
 
 @pytest.mark.skipif(not HAS_NX, reason='needs networkx')
 @pytest.mark.parametrize("method, kwargs", [
@@ -131,10 +133,7 @@ class BaseTestVesicle:
         return mda.Universe(self.file)
 
 
-@pytest.mark.parametrize("method, kwargs", [
-    ("spectralclustering", {"cutoff": 100, "delta": 10}),
-])
-class TestVesicleFull(BaseTestVesicle):
+class BaseTestVesicleFull(BaseTestVesicle):
     def test_full(self, universe, method, kwargs):
         lf = LeafletFinder(universe.atoms, select=self.select,
                            n_leaflets=self.n_leaflets, pbc=True,
@@ -145,12 +144,17 @@ class TestVesicleFull(BaseTestVesicle):
                          err_msg="Found wrong leaflet lipids")
 
 
-@pytest.mark.skipif(not HAS_NX, reason='needs networkx')
+@pytest.mark.parametrize("method, kwargs", [
+    ("spectralclustering", {"cutoff": 100, "delta": 10}),
+])
+class TestVesicleFull(BaseTestVesicleFull):
+    """Test the core clustering methods"""
 
+@pytest.mark.skipif(not HAS_NX, reason='needs networkx')
 @pytest.mark.parametrize("method, kwargs", [
     ("graph", {"cutoff": 25}),
 ])
-class TestVesicleFullGraph(TestVesicleFull):
+class TestVesicleFullGraph(BaseTestVesicleFull):
     """Test the graph method"""
 
 

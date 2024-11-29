@@ -19,7 +19,7 @@ defaults:
 
 jobs:
   test:
-    name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}
+    name: ${{ matrix.os }}, 🐍 ${{ matrix.python-version }}, 🌐 {{ matrix.include-networkx }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
