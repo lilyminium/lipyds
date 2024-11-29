@@ -51,7 +51,7 @@ testpaths = [
 
 [tool.versioningit.vcs]
 method = "git"
-match = ["package-*"]
+match = ["v*"]
 default-tag = "0.0.0"
 
 [tool.versioningit.format]
@@ -59,9 +59,3 @@ default-tag = "0.0.0"
 distance = "{base_version}+{distance}.{vcs}{rev}"
 dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
 distance-dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
-
-[tool.versioningit.write]
-file = "lipyds/_version.py"
-
-[tool.versioningit.tag2version]
-rmprefix = "package-"
