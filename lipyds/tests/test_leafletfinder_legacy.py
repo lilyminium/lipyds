@@ -31,7 +31,7 @@ def test_optional_nx(universe):
     with pytest.raises(ImportError, match=errmsg):
         LeafletFinder(
             universe,
-            select="nam PO4",
+            select="name PO4",
             pbc=True
         )
 
