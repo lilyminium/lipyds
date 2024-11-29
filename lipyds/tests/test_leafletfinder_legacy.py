@@ -26,12 +26,12 @@ def lipid_heads(universe):
 
 
 @pytest.mark.skipif(HAS_NX, reason="networkx is installed")
-def test_optional_nx(universe, lipid_heads):
+def test_optional_nx(universe):
     errmsg = "networkx is required to use this method"
     with pytest.raises(ImportError, match=errmsg):
         LeafletFinder(
             universe,
-            select=lipid_heads,
+            select="nam PO4",
             pbc=True
         )
 
