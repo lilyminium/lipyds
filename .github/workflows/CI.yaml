@@ -19,7 +19,7 @@ defaults:
 
 jobs:
   test:
-    name: ${{ matrix.os }}, 🐍 ${{ matrix.python-version }}, 🌐 {{ matrix.install-networkx }}
+    name: ${{ matrix.os }}, 🐍 ${{ matrix.python-version }}, 🌐 ${{ matrix.install-networkx }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
