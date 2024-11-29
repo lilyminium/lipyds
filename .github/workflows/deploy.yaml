@@ -55,8 +55,6 @@ jobs:
         with:
           package-dir: .
         env:
-          CIBW_BEFORE_BUILD: git status
-          CIBW_TEST_COMMAND: git status
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
           CIBW_ARCHS: ${{ matrix.buildplat[2] }}
           CIBW_BUILD_VERBOSITY: 1
