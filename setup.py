@@ -14,7 +14,7 @@ from setuptools import setup, find_packages, Extension
 from distutils.ccompiler import new_compiler
 from distutils.sysconfig import customize_compiler
 
-RELEASE = "0.0.0-dev0"
+RELEASE = "0.0.2-dev"
 
 is_release = 'dev' not in RELEASE
 
@@ -41,18 +41,10 @@ except ImportError:
 
 
 def get_extensions():
-    compile_args = ['-std=c++11', '-ffast-math', '-funroll-loops',
+    compile_args = ['-std=c++11', '-funroll-loops',
                     '-fsigned-zeros', '-O3']
     mathlib = [] if os.name == "nt" else ["m"]  # don't link maths for Windows
 
-    # EXTENSION LIST
-
-    # cutils = Extension(name="lipyds.lib.cutils",
-    #                    sources=["lipyds/lib/cutils.pyx"],
-    #                    include_dirs=[np.get_include()],
-    #                    libraries=mathlib,
-    #                    language="c++",
-    #                    extra_compile_args=compile_args)
 
     cutils = Extension(name="lipyds.lib.cutils",
                        sources=["lipyds/lib/cutils.pyx"],
@@ -92,16 +84,11 @@ if __name__ == "__main__":
         # Self-descriptive entries which should always be present
         name='lipyds',
         author='Lily Wang',
-        author_email='lily.wang@anu.edu.au',
+        author_email='lily@mdanalysis.org',
         description=short_description[0],
         long_description=long_description,
         long_description_content_type="text/markdown",
-        license='MIT',
 
-        # Which Python importable modules should be included when your package is installed
-        # Handled automatically by setuptools. Use 'exclude' to prevent some specific
-        # subpackage(s) from being added, if needed
-        packages=find_packages(),
 
         # Optional include package data to ship with your package
         # Customize MANIFEST.in if the general case does not suit your needs
@@ -112,16 +99,11 @@ if __name__ == "__main__":
         # Allows `setup.py test` to work correctly with pytest
         setup_requires=["numpy>=1.16.0"] + pytest_runner,
 
-        # Additional entries you may want simply uncomment the lines you want and fill in the data
-        # url='http://www.my_package.com',  # Website
         install_requires=install_requires,  # Required packages, pulls from pip if needed; do not use for Conda deployment
         platforms=['Linux',
                    'Mac OS-X',
                    'Unix',
                    'Windows'],            # Valid platforms your code works on, adjust to your flavor
         python_requires=">=3.10",          # Python version restrictions
-
-        # Manual control if final package is compressible or not, set False to prevent the .egg from being made
-        # zip_safe=False,
 
     )

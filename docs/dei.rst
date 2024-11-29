@@ -1,2 +1,0 @@
-.. automodule:: lipyds.analysis.dei
-

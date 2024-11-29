@@ -196,10 +196,11 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
-intersphinx_mapping = {'https://docs.python.org/': None,
-                       'https://docs.scipy.org/doc/numpy/': None,
-                       'https://docs.scipy.org/doc/scipy/reference/': None,
-                       'https://matplotlib.org': None,
-                       'https://networkx.github.io/documentation/stable/': None,
-                       'https://docs.mdanalysis.org/stable/': None,
-                       }
+intersphinx_mapping = {
+    "python": ('https://docs.python.org/3/', None),
+    "numpy": ('https://numpy.org/doc/stable/', None),
+    "scipy": ('https://docs.scipy.org/doc/scipy', None),
+    "matplotlib": ('https://matplotlib.org', None),
+    "networkx": ('https://networkx.github.io/documentation/stable/', None),
+    "mdanalysis": ('https://docs.mdanalysis.org/stable/', None),
+}
