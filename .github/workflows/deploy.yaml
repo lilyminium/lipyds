@@ -49,9 +49,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      
-      - name: See versioning
-        run: git describe
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
@@ -62,6 +59,10 @@ jobs:
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
           CIBW_ARCHS: ${{ matrix.buildplat[2] }}
           CIBW_BUILD_VERBOSITY: 1
+
+      - name: git status
+        run: |
+          git status
 
       - name: upload artifacts
         if: |
