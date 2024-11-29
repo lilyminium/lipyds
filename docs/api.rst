@@ -5,6 +5,3 @@ API Documentation
 
    leafletfinder
    grouping
-   apl
-   dei
-   flipflop
