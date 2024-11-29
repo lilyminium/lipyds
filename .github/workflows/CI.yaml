@@ -23,8 +23,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macOS-13, macOS-latest, ubuntu-latest]  # , windows-latest
+        os: [macOS-latest, ubuntu-latest]  # , windows-latest
         python-version: ["3.10", "3.11", "3.12"]
+        install-networkx: [true, false]
 
     steps:
     - uses: actions/checkout@v3
@@ -34,18 +35,24 @@ jobs:
         df -h
         ulimit -a
 
+    - name: Set up extra packages
+      run: |
+        EXTRA_CONDA_PACKAGES=""
+        if [[ ${{ matrix.install-networkx }} == "true" ]]; then
+          EXTRA_CONDA_PACKAGES+=" networkx"
+        fi
+        echo "EXTRA_CONDA_PACKAGES=$EXTRA_CONDA_PACKAGES" >> $GITHUB_ENV
+
 
     # More info on options: https://github.com/conda-incubator/setup-miniconda
     - uses: mamba-org/setup-micromamba@v2
       with:
-        environment-file: devtools/conda-envs/test_env.yaml
-        create-args: >-
-            python=${{ matrix.python-version }}
+        environment-file: devtools/conda-envs/base_env.yaml
+        create-args: python=${{ matrix.python-version }} ${{ env.EXTRA_CONDA_PACKAGES }}
 
     - name: Install package
       run: |
-        python setup.py develop
-        micromamba list
+        pip install -e .
 
 
     - name: Run tests

@@ -11,6 +11,12 @@ from .datafiles import (Martini_double_membrane, DPPC_vesicle_only,
 
 from lipyds import LeafletFinder
 
+try:
+    import networkx
+    HAS_NX = True
+except ImportError:
+    HAS_NX = False
+
 class BaseTestLeafletFinder:
     select = "name PO4"
 
@@ -43,12 +49,20 @@ class BaseTestLeafletFinder:
 
 
 @pytest.mark.parametrize("method, kwargs", [
-    ("graph", {"cutoff": 20}),
     ("spectralclustering", {"cutoff": 40}),
 ])
 class TestSinglePlanar(BaseTestLeafletFinder):
     file = Martini_membrane_gro
     leaflet_resix = [np.arange(180), np.arange(225, 405)]
+
+
+@pytest.mark.skipif(not HAS_NX, reason='needs networkx')
+@pytest.mark.parametrize("method, kwargs", [
+    ("graph", {"cutoff": 20}),
+])
+class TestSinglePlanarGraph(TestSinglePlanar):
+    """Test the graph method"""
+
 
 
 @pytest.mark.parametrize("method, kwargs", [
@@ -118,7 +132,6 @@ class BaseTestVesicle:
 
 
 @pytest.mark.parametrize("method, kwargs", [
-    ("graph", {"cutoff": 25}),
     ("spectralclustering", {"cutoff": 100, "delta": 10}),
 ])
 class TestVesicleFull(BaseTestVesicle):
@@ -130,6 +143,15 @@ class TestVesicleFull(BaseTestVesicle):
         for found, given in zip(lf.leaflet_residues, self.full_20):
             assert_equal(found.residues.resindices[::20], given,
                          err_msg="Found wrong leaflet lipids")
+
+
+@pytest.mark.skipif(not HAS_NX, reason='needs networkx')
+
+@pytest.mark.parametrize("method, kwargs", [
+    ("graph", {"cutoff": 25}),
+])
+class TestVesicleFullGraph(TestVesicleFull):
+    """Test the graph method"""
 
 
 @pytest.mark.parametrize("method, kwargs", [
