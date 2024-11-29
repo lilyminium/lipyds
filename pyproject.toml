@@ -51,7 +51,7 @@ testpaths = [
 
 [tool.versioningit.vcs]
 method = "git"
-match = ["v*"]
+match = ["package-*"]
 default-tag = "0.0.0"
 
 [tool.versioningit.format]

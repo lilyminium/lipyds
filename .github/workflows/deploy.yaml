@@ -52,7 +52,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.20.0
         with:
-          package-dir: package
+          package-dir: .
         env:
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
           CIBW_ARCHS: ${{ matrix.buildplat[2] }}
@@ -89,7 +89,7 @@ jobs:
           (github.event_name == 'release' && github.event.action == 'published')
         uses: actions/upload-artifact@v4
         with:
-          path: package/dist/*.tar.gz
+          path: dist/*.tar.gz
           retention-days: 7
 
   upload_testpypi_lipyds:
