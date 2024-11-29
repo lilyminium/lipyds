@@ -14,7 +14,7 @@ from setuptools import setup, find_packages, Extension
 from distutils.ccompiler import new_compiler
 from distutils.sysconfig import customize_compiler
 
-RELEASE = "0.0.2-dev"
+RELEASE = "0.0.1"
 
 is_release = 'dev' not in RELEASE
 
