@@ -62,3 +62,6 @@ distance-dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
 
 [tool.versioningit.write]
 file = "lipyds/_version.py"
+
+[tool.versioningit.tag2version]
+rmprefix = "package-"
