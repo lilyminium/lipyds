@@ -62,7 +62,7 @@ class TestSinglePlanar(BaseTestSinglePlanar):
 @pytest.mark.parametrize("method, kwargs", [
     ("graph", {"cutoff": 20}),
 ])
-class TestSinglePlanarGraph(TestSinglePlanar):
+class TestSinglePlanarGraph(BaseTestSinglePlanar):
     """Test the graph method"""
 
 
